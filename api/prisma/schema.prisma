@@ -1,0 +1,78 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" 
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int             @id @default(autoincrement())
+  username      String          @unique
+  gitAccounts   GitAccount[]
+  projects      Project[]
+}
+
+model GitAccount {
+  id            Int     @id @default(autoincrement())
+  provider      String  // e.g., 'github', 'gitlab'
+  providerUserId String
+  accessToken   String
+  refreshToken  String?
+  user          User    @relation(fields: [userId], references: [id])
+  userId        Int
+  @@unique([provider, providerUserId])
+}
+
+model Project {
+  id          Int          @id @default(autoincrement())
+  userId      Int
+  user        User         @relation(fields: [userId], references: [id])
+  name        String
+  gitRepoUrl  String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deployments Deployment[]
+  domains     Domain[]
+}
+
+enum DeploymentStatus {
+  pending
+  deploying
+  success
+  failed
+}
+
+model Deployment {
+  id            Int              @id @default(autoincrement())
+  // REMOVE @relation from projectId
+  projectId     Int
+  // KEEP @relation on project
+  project       Project          @relation(fields: [projectId], references: [id])
+  deploymentUrl String
+  version       String
+  createdAt     DateTime         @default(now())
+  status        DeploymentStatus @default(pending)
+}
+
+model Domain {
+  id             Int             @id @default(autoincrement())
+  // REMOVE @relation from projectId
+  projectId      Int
+  // KEEP @relation on project
+  project        Project         @relation(fields: [projectId], references: [id])
+  domainName     String          @unique
+  sslCertificateId Int?
+  sslCertificate SslCertificate? @relation(fields: [sslCertificateId], references: [id])
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model SslCertificate {
+  id              Int      @id @default(autoincrement())
+  certificateData String
+  domains         Domain[]
+}
