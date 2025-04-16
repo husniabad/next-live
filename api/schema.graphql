@@ -1,0 +1,57 @@
+type User {
+  id: Int!
+  username: String!
+  projects: [Project!]!
+}
+
+type Project {
+  id: Int!
+  userId: Int!
+  name: String!
+  gitRepoUrl: String!
+  createdAt: String!
+  updatedAt: String!
+  deployments: [Deployment!]!
+  domains: [Domain!]!
+}
+
+enum DeploymentStatus {
+  pending
+  deploying
+  success
+  failed
+}
+
+type Deployment {
+  id: Int!
+  projectId: Int!
+  deploymentUrl: String!
+  version: String!
+  createdAt: String!
+  status: DeploymentStatus!
+}
+
+type Domain {
+  id: Int!
+  projectId: Int!
+  domainName: String!
+  sslCertificateId: Int
+  sslCertificate: SslCertificate
+  createdAt: String!
+  updatedAt: String!
+}
+
+type SslCertificate {
+  id: Int!
+  certificateData: String!
+  domains: [Domain!]!
+}
+
+type Query {
+  projects: [Project!]!
+  project(id: Int!): Project
+}
+
+type Mutation {
+  createProject(name: String!, gitRepoUrl: String!, userId: Int!): Project!
+}
