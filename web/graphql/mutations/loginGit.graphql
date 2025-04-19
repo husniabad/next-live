@@ -1,0 +1,5 @@
+mutation LoginGit($provider: String!, $code: String!) {
+  loginGit(provider: $provider, code: $code) {
+    token
+  }
+}

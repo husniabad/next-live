@@ -1,8 +1,24 @@
+
+directive @auth on FIELD_DEFINITION
+
 type User {
   id: Int!
   username: String!
   projects: [Project!]!
+  gitAccounts: [GitAccount!]! # Make sure this is in your User type
 }
+
+type GitAccount {
+  id: Int!
+  provider: String!
+  providerUserId: String!
+  accessToken: String
+  refreshToken: String
+  user: User!
+  userId: Int!
+}
+
+
 
 type Project {
   id: Int!
@@ -47,11 +63,24 @@ type SslCertificate {
   domains: [Domain!]!
 }
 
+type LoginResponse {
+  token: String!
+}
+
+type Repository {
+  name: String!
+  html_url: String!
+  # Add other relevant fields from the Git provider's API
+}
+
 type Query {
   projects: [Project!]!
   project(id: Int!): Project
+  me: User
+  repositories: [Repository!]!  @auth
 }
 
 type Mutation {
   createProject(name: String!, gitRepoUrl: String!, userId: Int!): Project!
+  loginGit(provider:String!, code:String!):LoginResponse!
 }

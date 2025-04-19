@@ -19,8 +19,8 @@ model User {
 model GitAccount {
   id            Int     @id @default(autoincrement())
   provider      String  // e.g., 'github', 'gitlab'
-  providerUserId String
-  accessToken   String
+  providerUserId String?
+  accessToken   String?
   refreshToken  String?
   user          User    @relation(fields: [userId], references: [id])
   userId        Int

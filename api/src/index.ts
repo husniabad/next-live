@@ -7,17 +7,46 @@ import resolvers from './resolvers'; // Corrected import path
 import express, { Request, Response } from 'express';
 import { buildProject } from './buildService'; // Corrected import path
 
+// import { startStandaloneServer } from '@apollo/server/standalone';
+// import { typeDefs } from '../schema.graphql';
+// import typedDef
+import { PrismaClient } from '@prisma/client';
+import { makeExecutableSchema } from '@graphql-tools/schema';
+// import { authDirectiveTransformer } from './authDirective'; // Import the directive transformer
+import jwt from 'jsonwebtoken';
+
+const prisma = new PrismaClient();
+ const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
+
+ // Create an executable schema with the directive transformer
+ const typeDefs = fs.readFileSync(
+   path.join(__dirname, '../schema.graphql'),
+   'utf8'
+ );
+ let schema = makeExecutableSchema({ typeDefs, resolvers });
+//  schema = authDirectiveTransformer(schema);
+
 const app = express();
 app.use(express.json());
 
-const typeDefs = fs.readFileSync(
-  path.join(__dirname, '../schema.graphql'),
-  'utf8'
-);
 
 const server = new ApolloServer({
-  typeDefs,
-  resolvers,
+  schema,
+  context: async ({ req }) => {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    let userId: number | null = null;
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+        userId = decoded.userId;
+      } catch (error) {
+        console.warn('Invalid or expired token');
+      }
+    }
+    return { prisma, userId }; // Make userId available in the context
+  },
 });
 
 server.listen().then(({ url }) => {
