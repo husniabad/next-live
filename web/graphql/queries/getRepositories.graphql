@@ -1,0 +1,6 @@
+query GetRepositories {
+  repositories {
+    name
+    html_url
+  }
+}
