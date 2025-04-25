@@ -47,7 +47,7 @@ const Login = () => {
         });
         localStorage.setItem('token', data.loginGit.token);
         setIsLoggingIn(false)
-        router.push('/');
+        // router.push('/');
       } catch (err) {
         setError('Login failed. Please try again.');
         console.error(err);

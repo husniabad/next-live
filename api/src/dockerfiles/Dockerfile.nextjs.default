@@ -1,0 +1,80 @@
+# api/src/dockerfiles/Dockerfile.nextjs.default
+
+# Stage 1: Install dependencies
+# Use a specific LTS Node.js version
+FROM node:18-alpine AS deps
+WORKDIR /app
+
+# Copy package manager files
+COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+
+# Install dependencies based on lock file
+# If no lockfile, it will exit 1 as per original logic - Next.js needs deps installed.
+RUN \
+   if [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
+   elif [ -f package-lock.json ]; then npm ci; \
+   elif [ -f pnpm-lock.yaml ]; then \
+      # Install pnpm if necessary (alpine doesn't have it by default)
+     apk add --no-cache curl && \
+     curl -fsSL https://get.pnpm.io/install.sh | sh - && \
+      pnpm install --frozen-lockfile; \
+    else echo "Lockfile not found. Dependency installation failed." && exit 1; \
+   fi
+
+# ---
+
+# Stage 2: Build the Next.js application
+FROM node:18-alpine AS builder
+WORKDIR /app
+# Copy dependencies from the 'deps' stage
+COPY --from=deps /app/node_modules ./node_modules
+# Copy the rest of the application code
+COPY . .
+
+# --- SIMPLIFIED & CORRECTED BUILD COMMAND ---
+# This command ASSUMES the user's package.json has a "build" script
+# (e.g., "build": "next build"). It directly executes this standard script.
+# If the script IS missing, the build will fail with a clear "missing script: build" error from npm/yarn.
+RUN \
+  if [ -f yarn.lock ]; then \
+  echo "Running 'yarn run build'"; \
+  yarn run build; \
+  else \
+  echo "Running 'npm run build'"; \
+  npm run build; \
+  fi
+# --- End SIMPLIFIED & CORRECTED BUILD COMMAND ---
+
+
+# ---
+
+# Stage 3: Production image using standalone output
+# Ensure your users configure 'output: "standalone"' in next.config.js for this to work best
+FROM node:18-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+# Set HOSTNAME for Next.js standalone server binding if needed
+ENV HOSTNAME="0.0.0.0"
+# Set PORT, can be overridden at runtime if needed
+ENV PORT=3000
+
+# Create a non-root user for security
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy necessary files from the builder stage
+COPY --from=builder /app/public ./public
+# Ensure this path is correct based on your default Dockerfile's stage 2 output location
+# For standalone output (recommended):
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# Copy static assets
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copy next.config.js if needed for runtime config (common for standalone)
+COPY --from=builder --chown=nextjs:nodejs /app/next.config.* ./
+
+
+USER nextjs
+EXPOSE 3000
+
+CMD ["node", "server.js"]

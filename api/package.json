@@ -21,6 +21,7 @@
     "graphql": "^16.10.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.14.1",
+    "pm2": "^6.0.5",
     "simple-git": "^3.27.0"
   },
   "devDependencies": {
@@ -28,7 +29,6 @@
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.14.1",
     "prisma": "^6.6.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "ts-node": "^10.9.2"
   }
 }

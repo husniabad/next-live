@@ -45,6 +45,8 @@ type Deployment {
   version: String!
   createdAt: String!
   status: DeploymentStatus!
+  buildOutputPath: String # Added based on previous discussion
+  internalPort: Int # Added based on previous discussion
 }
 
 type Domain {
@@ -81,6 +83,7 @@ type Query {
 }
 
 type Mutation {
-  createProject(name: String!, gitRepoUrl: String!, userId: Int!): Project!
+  createProject(name: String!, gitRepoUrl: String!): Project!
   loginGit(provider:String!, code:String!):LoginResponse!
+  deployProject(projectId:Int!):Deployment!
 }
