@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import resolvers from './resolvers'; // Corrected import path
 import express, { Request, Response } from 'express';
-import { buildProject } from './buildService'; // Corrected import path
+import { buildProjectImage } from './buildService'; // Corrected import path
 
 // import { startStandaloneServer } from '@apollo/server/standalone';
 // import { typeDefs } from '../schema.graphql';
@@ -62,7 +62,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
   const repoPath = path.join(__dirname, 'repositories', projectId.toString());
   const buildOutputPath = path.join(__dirname, 'builds', projectId.toString());
   try {
-    await buildProject(repoPath, buildOutputPath);
+    await buildProjectImage(repoPath, buildOutputPath);
     console.log('Project build success');
     res.sendStatus(200);
   } catch (e) {
