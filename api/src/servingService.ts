@@ -34,13 +34,11 @@ async function findFreePort(
     const isPortFree = await new Promise<boolean>((resolve) => {
       const server = net.createServer();
 
-      // If an error occurs (e.g., EADDRINUSE - address already in use)
       server.once('error', (err: any) => {
         server.close();
         if (err.code === 'EADDRINUSE') {
           resolve(false); // Port is in use
         } else {
-          // Another error occurred (e.g., permissions), consider it not free for this purpose
           console.warn(
             `Unexpected error checking port ${port}: ${err.message}`
           );
@@ -49,7 +47,7 @@ async function findFreePort(
       });
       // If the server starts listening, the port is free
       server.once('listening', () => {
-        server.close(); // Close the server immediately after confirming the port is free
+        server.close(); 
         resolve(true); // Port is free
       });
 
@@ -57,8 +55,9 @@ async function findFreePort(
       // (Though less common for EADDRINUSE)
       const timeout = setTimeout(() => {
         server.close(); // Close the server if it takes too long
+        console.warn(`Timeout checking port ${port}`);
         resolve(false); // Consider the port not free
-      }, 200);
+      }, 200); 
 
       server.once('close', () => {
         clearTimeout(timeout); // Clear the timeout if the server closes
@@ -88,7 +87,7 @@ async function findFreePort(
 async function startApplicationWithPm2(buildOutputPath: string, port: number, deploymentId: number): Promise<void> {
   // PM2 process name for this deployment
   const processName = `deploy-${deploymentId}`;
-   const entryPoint = path.join(buildOutputPath, 'server.js'); // Path to the server.js entry point
+  const entryPoint = path.join(buildOutputPath, 'server.js'); // Path to the server.js entry point
 
    // Check if the entry point exists (important!)
    try {
@@ -122,11 +121,7 @@ async function startApplicationWithPm2(buildOutputPath: string, port: number, de
 
   console.log(`Connecting to PM2 daemon to start process '${processName}' on port ${port}...`);
 
-  // --- Corrected PM2 API Usage ---
   return new Promise((resolve, reject) => {
-      // We already checked if pm2.connect is a function at the top level.
-      // If we reach here, it should exist, but we'll handle potential errors from the call.
-      // Use optional chaining on pm2.connect call just in case, although the check above should prevent this.
       pm2?.connect((err) => {
           if (err) {
               console.error('Error connecting to PM2:', err);
@@ -154,7 +149,6 @@ async function startApplicationWithPm2(buildOutputPath: string, port: number, de
           });
       });
   });
-  // --- End Corrected PM2 API Usage ---
 }
 
 /**
@@ -182,7 +176,6 @@ async function startApplication(buildOutputPath: string, deploymentId: number): 
 
   } catch (error: any) {
       console.error(`Error during application serving setup for deployment ${deploymentId}:`, error.message);
-      // Re-throw the error to be caught by the caller (deployProject mutation)
       throw new Error(`Failed during application serving setup: ${error.message}`);
   }
 }
