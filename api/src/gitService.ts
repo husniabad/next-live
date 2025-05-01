@@ -6,7 +6,7 @@ import fs from 'fs/promises';
 import os from 'os';
 
 async function cloneRepository(repoUrl: string, deploymentId: string): Promise<string> {
-  const homeDir = os.homedir();
+  const homeDir = os.homedir(); // temporary directory for cloning
   const cloneDir = path.join(homeDir, '.next-live-clones', `deployment-${deploymentId}-repo`);
   const destinationPath = path.join(cloneDir, 'repository');
   console.log(`Cloning repo from ${repoUrl} to ${destinationPath}`);
