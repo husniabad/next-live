@@ -5,8 +5,6 @@ import path from 'path';
 import fs from 'fs/promises'; // Use promises version for async file operations
 import fsSync from 'fs'; // Use sync version for existsSync
 
-// Assuming the default Dockerfile is located here relative to the built JS file
-// Corrected path calculation based on previous debugging: assuming dockerfiles is sibling of api
 const DEFAULT_DOCKERFILE_PATH = path.resolve(__dirname, 'dockerfiles', 'Dockerfile.nextjs.default');
 
 
@@ -19,12 +17,12 @@ const DEFAULT_DOCKERFILE_PATH = path.resolve(__dirname, 'dockerfiles', 'Dockerfi
  * @param buildArgs An optional object of build arguments to pass (e.g., { NEXT_PUBLIC_API_URL: '...' }).
  * @returns A promise that resolves when the build is complete, or rejects on failure.
  */
-async function buildProjectImage(repoPath: string, imageName: string, buildArgs: { [key: string]: string } = {}): Promise<void> {
+async function buildProjectImage(repoPath: string, imageName: string, buildArgs: { [key: string]: string } = {}): Promise<{dockerfileUsed: string}> {
     console.log("Resolved default Dockerfile path:", DEFAULT_DOCKERFILE_PATH);
 
     const userDockerfilePath = path.join(repoPath, 'Dockerfile'); // Standard Dockerfile name
     let dockerfilePathToUse = '';
-    let isUsingDefault = false;
+    let dockerfileSource = 'unknown';
     const buildContext = repoPath; // The directory containing the Dockerfile and code
 
     console.log(`Checking for user-provided Dockerfile at: ${userDockerfilePath}`);
@@ -32,14 +30,11 @@ async function buildProjectImage(repoPath: string, imageName: string, buildArgs:
     if (fsSync.existsSync(userDockerfilePath)) {
         console.log(`User-provided Dockerfile found. Using: ${userDockerfilePath}`);
         dockerfilePathToUse = userDockerfilePath;
-        // If user provides Dockerfile, we assume they handle the build process correctly
-        // No automatic next.config check or modification is done.
+        dockerfileSource = 'user';
+
 
     } else {
-        // No user Dockerfile, proceed with Next.js detection and default Dockerfile logic
 
-        // Check if the required default Dockerfile actually exists on the filesystem
-        // This is a server configuration check, should ideally pass.
         if (!fsSync.existsSync(DEFAULT_DOCKERFILE_PATH)) {
              console.error(`FATAL: Default Next.js Dockerfile not found at expected path: ${DEFAULT_DOCKERFILE_PATH}`);
              // Fail the build with a server configuration error
@@ -131,7 +126,7 @@ async function buildProjectImage(repoPath: string, imageName: string, buildArgs:
             // If we reached here, it's a Next.js project and the config check passed (or wasn't applicable because user provided Dockerfile)
             console.log(`Using default Next.js Dockerfile: ${DEFAULT_DOCKERFILE_PATH}`);
             dockerfilePathToUse = DEFAULT_DOCKERFILE_PATH;
-            isUsingDefault = true;
+            dockerfileSource = 'default';
 
         } else {
             // Not detected as a Next.js project and no user Dockerfile provided.
@@ -185,10 +180,10 @@ async function buildProjectImage(repoPath: string, imageName: string, buildArgs:
             console.log(`Docker build process exited with code ${code}`);
             if (code === 0) {
                 console.log(`Successfully built image: ${imageName}`);
-                resolve();
+                resolve({dockerfileUsed: dockerfileSource});
             } else {
                 console.error(`Docker build failed for image ${imageName}`);
-                const fullErrorDetails = `Docker build failed (Using ${isUsingDefault ? 'default' : 'user'} Dockerfile).\nCommand: docker ${args.join(' ')}\nExit Code: ${code}\nStdout:\n${stdout}\nStderr:\n${stderr}`;
+                const fullErrorDetails = `Docker build failed (Using ${dockerfileSource } Dockerfile).\nCommand: docker ${args.join(' ')}\nExit Code: ${code}\nStdout:\n${stdout}\nStderr:\n${stderr}`;
                 reject(new Error(fullErrorDetails));
             }
         });

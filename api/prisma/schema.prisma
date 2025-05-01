@@ -54,11 +54,13 @@ model Deployment {
   // KEEP @relation on project
   project       Project          @relation(fields: [projectId], references: [id])
   deploymentUrl String
-  internalPort  Int?
   version       String
+  internalPort  Int?
   buildOutputPath String? 
-  createdAt     DateTime         @default(now())
   status        DeploymentStatus @default(pending)
+  errorMessage  String?
+  dockerfileUsed String?
+  createdAt     DateTime         @default(now())
 }
 
 model Domain {

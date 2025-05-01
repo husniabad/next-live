@@ -42,11 +42,13 @@ type Deployment {
   id: Int!
   projectId: Int!
   deploymentUrl: String!
-  version: String!
-  createdAt: String!
+  version: String
   status: DeploymentStatus!
-  buildOutputPath: String # Added based on previous discussion
-  internalPort: Int # Added based on previous discussion
+  buildOutputPath: String 
+  internalPort: Int 
+  dockerfileUsed: String
+  errorMessage: String
+  createdAt: String!
 }
 
 type Domain {
@@ -80,6 +82,7 @@ type Query {
   project(id: Int!): Project
   me: User
   repositories: [Repository!]!  @auth
+  deploymentStatus(id: Int!): Deployment
 }
 
 type Mutation {

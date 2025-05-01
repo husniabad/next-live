@@ -5,14 +5,12 @@ import path from 'path';
 import fs from 'fs/promises'; // Use promises version for async file operations
 import { URL } from 'url'; // Import URL class
 
-
 // --- Configuration Constants ---
 // IMPORTANT: Adjust these paths and commands based on your VPS environment!
 const NGINX_SITES_AVAILABLE_DIR = '/etc/nginx/sites-available'; // Standard Nginx directory
-const NGINX_SITES_ENABLED_DIR = '/etc/nginx/sites-enabled';   // Standard Nginx directory
-const NGINX_RELOAD_COMMAND = 'sudo nginx -s reload';         // Command to reload Nginx config
+const NGINX_SITES_ENABLED_DIR = '/etc/nginx/sites-enabled'; // Standard Nginx directory
+const NGINX_RELOAD_COMMAND = 'sudo nginx -s reload'; // Command to reload Nginx config
 // --- End Configuration Constants ---
-
 
 /**
  * Generates the Nginx server block configuration content for a deployment.
@@ -21,16 +19,19 @@ const NGINX_RELOAD_COMMAND = 'sudo nginx -s reload';         // Command to reloa
  * @param buildOutputPath The path to the extracted build artifacts on the VPS filesystem (used for static assets).
  * @returns The Nginx configuration string.
  */
-function generateNginxConfig(deploymentUrl: string, internalPort: number, buildOutputPath: string): string {
-    // Use the URL class to parse the deploymentUrl and get just the hostname
-    const url = new URL(deploymentUrl);
-    const hostname = url.hostname; // This will be 'deploy-XX.userId.yourplatform.com'
+function generateNginxConfig(
+  deploymentUrl: string,
+  internalPort: number,
+  buildOutputPath: string
+): string {
+  // Use the URL class to parse the deploymentUrl and get just the hostname
+  const url = new URL(deploymentUrl);
+  const hostname = url.hostname; // This will be 'deploy-XX.userId.yourplatform.com'
 
-
-    // Basic Nginx server block template
-    // IMPORTANT: Placeholder SSL config. You'll need to integrate Certbot or similar.
-    // For initial testing, you might only listen on port 80 or use dummy SSL certs.
-    return `
+  // Basic Nginx server block template
+  // IMPORTANT: Placeholder SSL config. You'll need to integrate Certbot or similar.
+  // For initial testing, you might only listen on port 80 or use dummy SSL certs.
+  return `
 server {
     listen 80;
     # listen 443 ssl; # Uncomment and configure SSL later
@@ -90,37 +91,51 @@ server {
  * @throws Error if the command fails or the process exits with a non-zero code.
  */
 async function executeShellCommand(command: string): Promise<void> {
-    console.log(`Executing command: ${command}`);
-    return new Promise((resolve, reject) => {
-        const process = spawn(command, {
-            shell: true, // Use the shell to handle sudo, pipes, etc.
-            stdio: 'pipe' // Capture stdout and stderr
-        });
-
-        let stdout = '';
-        let stderr = '';
-
-        process.stdout.on('data', (data) => { stdout += data.toString(); });
-        process.stderr.on('data', (data) => { stderr += data.toString(); });
-
-        process.on('error', (error) => {
-             console.error(`Command process failed to start: ${command}`, error.message);
-             reject(new Error(`Command process failed to start: ${command}. ${error.message}`));
-        });
-
-        process.on('close', (code) => {
-            console.log(`Command process exited with code ${code}: ${command}`);
-            if (code === 0) {
-                console.log(`Command successful.`);
-                resolve();
-            } else {
-                console.error(`Command failed. Stderr:\n${stderr}`);
-                reject(new Error(`Command failed: ${command}. Exit Code: ${code}. Stderr: ${stderr}`));
-            }
-        });
+  console.log(`Executing command: ${command}`);
+  return new Promise((resolve, reject) => {
+    const process = spawn(command, {
+      shell: true, // Use the shell to handle sudo, pipes, etc.
+      stdio: 'pipe', // Capture stdout and stderr
     });
-}
 
+    let stdout = '';
+    let stderr = '';
+
+    process.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+    process.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    process.on('error', (error) => {
+      console.error(
+        `Command process failed to start: ${command}`,
+        error.message
+      );
+      reject(
+        new Error(
+          `Command process failed to start: ${command}. ${error.message}`
+        )
+      );
+    });
+
+    process.on('close', (code) => {
+      console.log(`Command process exited with code ${code}: ${command}`);
+      if (code === 0) {
+        console.log(`Command successful.`);
+        resolve();
+      } else {
+        console.error(`Command failed. Stderr:\n${stderr}`);
+        reject(
+          new Error(
+            `Command failed: ${command}. Exit Code: ${code}. Stderr: ${stderr}`
+          )
+        );
+      }
+    });
+  });
+}
 
 /**
  * Executes the Nginx reload command to apply new configuration.
@@ -130,10 +145,9 @@ async function executeShellCommand(command: string): Promise<void> {
  * @throws Error if the reload command fails.
  */
 async function reloadNginx(): Promise<void> {
-    // This function already uses executeShellCommand internally with the sudo command
-     await executeShellCommand(NGINX_RELOAD_COMMAND);
+  // This function already uses executeShellCommand internally with the sudo command
+  await executeShellCommand(NGINX_RELOAD_COMMAND);
 }
-
 
 /**
  * Configures Nginx for a specific deployment.
@@ -147,78 +161,99 @@ async function reloadNginx(): Promise<void> {
  * @returns A promise that resolves when configuration and reload are complete.
  * @throws Error if any step fails.
  */
-async function configureNginxForDeployment(deploymentUrl: string, internalPort: number, deploymentId: number, buildOutputPath: string): Promise<void> {
-    const configFileName = `deploy-${deploymentId}.conf`;
-    const sitesAvailablePath = path.join(NGINX_SITES_AVAILABLE_DIR, configFileName);
-    const sitesEnabledPath = path.join(NGINX_SITES_ENABLED_DIR, configFileName);
+async function configureNginxForDeployment(
+  deploymentUrl: string,
+  internalPort: number,
+  deploymentId: number,
+  buildOutputPath: string
+): Promise<void> {
+  const configFileName = `deploy-${deploymentId}.conf`;
+  const sitesAvailablePath = path.join(
+    NGINX_SITES_AVAILABLE_DIR,
+    configFileName
+  );
+  const sitesEnabledPath = path.join(NGINX_SITES_ENABLED_DIR, configFileName);
 
-    console.log(`Configuring Nginx for deployment ${deploymentId}: ${deploymentUrl} -> 127.0.0.1:${internalPort}`);
+  console.log(
+    `Configuring Nginx for deployment ${deploymentId}: ${deploymentUrl} -> 127.0.0.1:${internalPort}`
+  );
 
-    // 1. Generate configuration content
-    const nginxConfigContent = generateNginxConfig(deploymentUrl, internalPort, buildOutputPath);
-    console.log(`Generated Nginx config for ${deploymentUrl}.`);
+  // 1. Generate configuration content
+  const nginxConfigContent = generateNginxConfig(
+    deploymentUrl,
+    internalPort,
+    buildOutputPath
+  );
+  console.log(`Generated Nginx config for ${deploymentUrl}.`);
 
-    // 2. Write the configuration file to sites-available using sudo tee
-    // We use 'tee' to write standard input to a file with sudo permissions.
-    // It's generally safer than 'sudo echo > file' which can be tricky with quotes.
-    // Using echo and piping works, but requires careful escaping of quotes in the content.
-    // A more robust way is piping to stdin.
+  // 2. Write the configuration file to sites-available using sudo tee
+  // We use 'tee' to write standard input to a file with sudo permissions.
+  // It's generally safer than 'sudo echo > file' which can be tricky with quotes.
+  // Using echo and piping works, but requires careful escaping of quotes in the content.
+  // A more robust way is piping to stdin.
 
-    console.log(`Attempting to write Nginx config to ${sitesAvailablePath} using sudo tee...`);
+  console.log(
+    `Attempting to write Nginx config to ${sitesAvailablePath} using sudo tee...`
+  );
 
-    await new Promise<void>((resolve, reject) => {
-        // Command: sudo tee /path/to/file
-        const teeProcess = spawn(`sudo tee ${sitesAvailablePath}`, {
-            shell: true, // Required for sudo
-            stdio: ['pipe', 'pipe', 'pipe'] // stdin, stdout, stderr
-        });
-
-        let stderr = '';
-        teeProcess.stderr.on('data', (data) => { stderr += data.toString(); });
-
-        teeProcess.on('error', (error) => {
-             console.error(`sudo tee process failed to start: ${error.message}`);
-             reject(new Error(`sudo tee process failed to start: ${error.message}`));
-        });
-
-        teeProcess.on('close', (code) => {
-            console.log(`sudo tee process exited with code ${code}`);
-            if (code === 0) {
-                console.log('Nginx config file written successfully using sudo tee.');
-                resolve();
-            } else {
-                console.error(`sudo tee failed. Stderr:\n${stderr}`);
-                reject(new Error(`Failed to write Nginx config using sudo tee. Exit Code: ${code}. Stderr: ${stderr}`));
-            }
-        });
-
-        // Write the configuration content to the standard input of the tee process
-        teeProcess.stdin.write(nginxConfigContent);
-        teeProcess.stdin.end(); // End the input stream
+  await new Promise<void>((resolve, reject) => {
+    // Command: sudo tee /path/to/file
+    const teeProcess = spawn(`sudo tee ${sitesAvailablePath}`, {
+      shell: true, // Required for sudo
+      stdio: ['pipe', 'pipe', 'pipe'], // stdin, stdout, stderr
     });
 
+    let stderr = '';
+    teeProcess.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
 
-    // 3. Create a symbolic link in sites-enabled using sudo ln -sf
-    // -s: create a symbolic link
-    // -f: remove existing destination files/symlinks
-    const symlinkCommand = `sudo ln -sf ${sitesAvailablePath} ${sitesEnabledPath}`;
+    teeProcess.on('error', (error) => {
+      console.error(`sudo tee process failed to start: ${error.message}`);
+      reject(new Error(`sudo tee process failed to start: ${error.message}`));
+    });
 
-    console.log(`Attempting to create symlink from ${sitesAvailablePath} to ${sitesEnabledPath} using sudo ln -sf...`);
-    await executeShellCommand(symlinkCommand);
-    console.log('Symlink created successfully using sudo ln.');
+    teeProcess.on('close', (code) => {
+      console.log(`sudo tee process exited with code ${code}`);
+      if (code === 0) {
+        console.log('Nginx config file written successfully using sudo tee.');
+        resolve();
+      } else {
+        console.error(`sudo tee failed. Stderr:\n${stderr}`);
+        reject(
+          new Error(
+            `Failed to write Nginx config using sudo tee. Exit Code: ${code}. Stderr: ${stderr}`
+          )
+        );
+      }
+    });
 
+    // Write the configuration content to the standard input of the tee process
+    teeProcess.stdin.write(nginxConfigContent);
+    teeProcess.stdin.end(); // End the input stream
+  });
 
-    // 4. Reload Nginx to apply the new configuration
-    console.log('Attempting to reload Nginx configuration...');
-    await reloadNginx(); // This function already exists and uses sudo
-    console.log(`Nginx configured successfully for deployment ${deploymentId}.`);
+  // 3. Create a symbolic link in sites-enabled using sudo ln -sf
+  // -s: create a symbolic link
+  // -f: remove existing destination files/symlinks
+  const symlinkCommand = `sudo ln -sf ${sitesAvailablePath} ${sitesEnabledPath}`;
 
-    // The main configureNginxForDeployment promise resolves implicitly if the chain finishes without error
+  console.log(
+    `Attempting to create symlink from ${sitesAvailablePath} to ${sitesEnabledPath} using sudo ln -sf...`
+  );
+  await executeShellCommand(symlinkCommand);
+  console.log('Symlink created successfully using sudo ln.');
+
+  // 4. Reload Nginx to apply the new configuration
+  console.log('Attempting to reload Nginx configuration...');
+  await reloadNginx(); // This function already exists and uses sudo
+  console.log(`Nginx configured successfully for deployment ${deploymentId}.`);
+
+  // The main configureNginxForDeployment promise resolves implicitly if the chain finishes without error
 }
 
 // Future functions:
 // async function removeNginxConfigForDeployment(deploymentId: number): Promise<void> { ... } // For stopping/deleting deployments
 // async function updateNginxConfigForDeployment(deploymentId: number, newInternalPort: number): Promise<void> { ... } // If port changes
-
 
 export { configureNginxForDeployment };
