@@ -23,6 +23,9 @@ model GitAccount {
   providerUserId String?
   accessToken   String?
   refreshToken  String?
+  avatarUrl  String?
+  profileUrl String?
+  name       String?
   user          User    @relation(fields: [userId], references: [id])
   userId        Int
   @@unique([provider, providerUserId])

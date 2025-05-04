@@ -1,0 +1,25 @@
+# web/graphql/queries/getProject.graphql
+
+query GetProject($projectId: Int!) {
+  # Assuming your project query can accept an ID and return project details
+  # and that the Project type has a 'deployments' field that returns a list of Deployment objects
+  project(id: $projectId) {
+    id
+    name
+    gitRepoUrl
+    createdAt
+    # Include other project fields as needed
+
+    # Fetch the list of deployments associated with this project
+    # Order by creation date descending to show latest deployments first
+    deployments(orderBy: { createdAt: desc }) {
+      id
+      status # e.g., 'pending', 'deploying', 'success', 'failed'
+      version # e.g., commit hash or version identifier
+      deploymentUrl # The public URL for the deployment
+      createdAt # When the deployment was created
+      errorMessage # Error message if status is 'failed'
+      # Include other deployment fields as needed (e.g., buildOutputPath, internalPort, dockerfileUsed)
+    }
+  }
+}
