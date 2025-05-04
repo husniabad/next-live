@@ -1,0 +1,17 @@
+# web/graphql/queries/getProjects.graphql
+
+query GetProjects {
+  projects { # Assuming your 'projects' query returns a list of Project objects
+    id
+    name
+    gitRepoUrl
+    createdAt
+    # Include the latest deployment status if available in your schema
+    latestDeployment { # Assuming a relationship field like 'latestDeployment' on Project
+      id
+      status # e.g., 'pending', 'deploying', 'success', 'failed'
+      createdAt
+      deploymentUrl # Include URL if needed for quick access
+    }
+  }
+}

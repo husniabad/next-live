@@ -1,4 +1,3 @@
-
 directive @auth on FIELD_DEFINITION
 
 type User {
@@ -11,14 +10,15 @@ type User {
 type GitAccount {
   id: Int!
   provider: String!
-  providerUserId: String!
-  accessToken: String
-  refreshToken: String
+  # providerUserId: String!
+  # accessToken: String
+  # refreshToken: String
+  avatarUrl: String
+  profileUrl: String
+  name: String
   user: User!
   userId: Int!
 }
-
-
 
 type Project {
   id: Int!
@@ -44,8 +44,8 @@ type Deployment {
   deploymentUrl: String!
   version: String
   status: DeploymentStatus!
-  buildOutputPath: String 
-  internalPort: Int 
+  buildOutputPath: String
+  internalPort: Int
   dockerfileUsed: String
   errorMessage: String
   createdAt: String!
@@ -81,12 +81,12 @@ type Query {
   projects: [Project!]!
   project(id: Int!): Project
   me: User
-  repositories: [Repository!]!  @auth
+  repositories: [Repository!]! @auth
   deploymentStatus(id: Int!): Deployment
 }
 
 type Mutation {
   createProject(name: String!, gitRepoUrl: String!): Project!
-  loginGit(provider:String!, code:String!):LoginResponse!
-  deployProject(projectId:Int!):Deployment!
+  loginGit(provider: String!, code: String!): LoginResponse!
+  deployProject(projectId: Int!): Deployment!
 }

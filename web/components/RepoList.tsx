@@ -12,7 +12,12 @@ const GET_REPOSITORIES = gql`
   }
 `;
 
-const RepoList = () => {
+interface RepoListProps {
+  onRepoSelect: (repoUrl: string) => void;
+  selectedRepoUrl: string; 
+}
+
+const RepoList = ({onRepoSelect , selectedRepoUrl} : RepoListProps) => {
   const { loading, error, data } = useQuery(GET_REPOSITORIES);
   const [repos, setRepos] = useState<any[]>([]);
 

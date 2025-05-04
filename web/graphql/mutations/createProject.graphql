@@ -1,0 +1,15 @@
+# web/graphql/mutations/createProject.graphql
+
+mutation CreateProject($name: String!, $gitRepoUrl: String!) {
+  createProject(name: $name, gitRepoUrl: $gitRepoUrl) {
+    id
+    name
+    gitRepoUrl
+    createdAt
+    # Fetch any other fields you need after creation, e.g.,
+    # latestDeployment {
+    #   id
+    #   status
+    # }
+  }
+}
