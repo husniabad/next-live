@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'; // Assuming shadcn button
 import Link from 'next/link'; // For back button
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // Shadcn card components
 import DeployButton from '@/components/DeployButton'; // Import the DeployButton component
+import { timeAgo } from '@/lib/utils';
 
 // GraphQL Query to fetch a single project's details (excluding deployments, as DeploymentList fetches them)
 // We might still need some basic project info here.
@@ -97,7 +98,7 @@ const ProjectDetailPage = () => {
             <CardDescription className="text-gray-600 dark:text-gray-400 truncate">{project.gitRepoUrl}</CardDescription>
           </CardHeader>
           <CardContent className="flex justify-between items-center">
-             <p className="text-sm text-gray-500 dark:text-gray-400">Created: {new Date(project.createdAt).toLocaleDateString()}</p>
+             <p className="text-sm text-gray-500 dark:text-gray-400">Created: {timeAgo(project.createdAt)}</p>
              {/* Deploy Button for this project */}
              {/* Pass the project ID to the DeployButton component */}
              <DeployButton projectId={project.id} />

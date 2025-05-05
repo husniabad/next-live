@@ -3,7 +3,9 @@
 
 import { useMutation, gql } from '@apollo/client';
 import { Button } from '@/components/ui/button'; // Assuming shadcn button
+// Import the toast object from sonner
 import { toast } from 'sonner'; // Assuming sonner for notifications
+import { useRouter } from 'next/navigation'; // Import useRouter for navigation
 
 // GraphQL Mutation to trigger a project deployment
 const DEPLOY_PROJECT_MUTATION = gql`
@@ -21,8 +23,10 @@ interface DeployButtonProps {
 }
 
 const DeployButton: React.FC<DeployButtonProps> = ({ projectId }) => {
+  const router = useRouter(); // Initialize router for navigation
   const [deployProjectMutation, { loading }] = useMutation(DEPLOY_PROJECT_MUTATION);
-//   const { toast } = toast(); // Initialize toast
+  // No need for useToast hook if using the direct methods
+  // const { toast } = useToast(); // Initialize toast
 
   // Function to handle clicking the deploy button
   const handleDeploy = async () => {
@@ -33,25 +37,40 @@ const DeployButton: React.FC<DeployButtonProps> = ({ projectId }) => {
         variables: { projectId },
       });
 
-      console.log("Deployment triggered successfully:", data?.deployProject);
+      const newDeploymentId = data?.deployProject?.id;
+      const initialStatus = data?.deployProject?.status;
 
-      // Show a success toast
-      toast("Deployment Triggered", {
-        description: `Deployment #${data?.deployProject?.id} started with status: ${data?.deployProject?.status}.`,
-        // type: "success",
+      console.log(`Deployment triggered successfully. New Deployment ID: ${newDeploymentId}, Status: ${initialStatus}`);
+
+      // --- Use toast.success() for success messages ---
+      toast.success("Deployment Triggered", {
+        description: `Deployment #${newDeploymentId} started with status: ${initialStatus}.`,
+        // type: "success", // Removed type property as it's implicit with toast.success
       });
+      // --- End toast.success() ---
 
-      // TODO: Optionally trigger a refetch of the project/deployment list
-      // on the ProjectDetailPage after a short delay or on status change
-      // This would involve passing a refetch function down from the page or using Apollo cache updates.
+
+      // Navigate to the specific deployment status page
+      if (newDeploymentId) {
+          router.push(`/deployments/${newDeploymentId}`);
+      } else {
+          // --- Use toast.warning() for warning messages ---
+           toast.warning("Deployment Triggered", {
+               description: "Deployment triggered, but could not get deployment ID for status page.",
+               // type: "warning", // Removed type property as it's implicit with toast.warning
+           });
+           // --- End toast.warning() ---
+      }
+
 
     } catch (error: any) {
       console.error("Error triggering deployment:", error);
-      // Show an error toast
-      toast("Deployment Failed", {
+      // --- Use toast.error() for error messages ---
+      toast.error("Deployment Failed", {
         description: error.message || "An error occurred while triggering the deployment.",
-        // type: "error",
+        // type: "error", // Removed type property as it's implicit with toast.error
       });
+      // --- End toast.error() ---
     }
   };
 

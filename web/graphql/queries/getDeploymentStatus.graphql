@@ -1,0 +1,15 @@
+# web/graphql/queries/getDeploymentStatus.graphql
+
+query GetDeploymentStatus($id: Int!) {
+  # Assuming your deploymentStatus query accepts an ID and returns deployment details
+  deploymentStatus(id: $id) {
+    id
+    status # e.g., 'pending', 'deploying', 'success', 'failed'
+    version # e.g., commit hash or version identifier
+    deploymentUrl # The public URL for the deployment
+    createdAt # When the deployment was created
+    errorMessage # Error message if status is 'failed'
+    dockerfileUsed # Which Dockerfile was used
+    # Include other deployment fields as needed (e.g., buildOutputPath, internalPort)
+  }
+}

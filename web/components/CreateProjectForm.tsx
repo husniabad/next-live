@@ -1,15 +1,18 @@
 // web/components/CreateProjectForm.tsx
-'use client'; // This is a client component
+'use client';
 
-import { useState } from 'react';
-import { useMutation, gql } from '@apollo/client';
-import { Button } from '@/components/ui/button'; // Shadcn button
-import { Input } from '@/components/ui/input'; // Shadcn input
-import { Label } from '@/components/ui/label'; // Shadcn label
-import RepoList from './RepoList'; // Import the RepoList component
-// Import the sonner toast function instead of useToast hook
-import { toast } from 'sonner'; // Assuming you have installed and set up sonner
-import { DialogFooter } from '@/components/ui/dialog'; // Shadcn dialog footer
+import { useState, useEffect } from 'react';
+import { useMutation, gql, useQuery } from '@apollo/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { DialogFooter, Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { Search, ChevronsUpDown, Check } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 // GraphQL Mutation to create a new project
 const CREATE_PROJECT_MUTATION = gql`
@@ -19,81 +22,102 @@ const CREATE_PROJECT_MUTATION = gql`
       name
       gitRepoUrl
       createdAt
-      # Fetch any other fields you need after creation, e.g.,
-      # latestDeployment {
-      #   id
-      #   status
-      # }
     }
   }
 `;
 
-// Define props for the form
+// GraphQL Query to fetch the list of user's repositories
+const GET_REPOSITORIES = gql`
+  query GetRepositories {
+    repositories {
+      name
+      html_url
+      description
+      size
+      clone_url
+      full_name
+    }
+  }
+`;
+
+interface Repository {
+  name: string;
+  full_name: string;
+  description: string;
+  size:number;
+  html_url: string;
+  clone_url:string;
+}
+
 interface CreateProjectFormProps {
-  onSuccess?: () => void; // Optional callback to run after successful project creation
+  onSuccess?: () => void;
 }
 
 const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onSuccess }) => {
-  const [projectName, setProjectName] = useState(''); // State for project name input
-  const [selectedRepoUrl, setSelectedRepoUrl] = useState(''); // State for selected repository URL
-  const [createProjectMutation, { loading, error }] = useMutation(CREATE_PROJECT_MUTATION); // Apollo mutation hook
-  // Removed useToast hook - using the toast function directly from sonner
-  // const { toast } = useToast(); // Hook to display toasts
+  const router = useRouter()
+  const [projectName, setProjectName] = useState('');
+  const [selectedRepoUrl, setSelectedRepoUrl] = useState('');
+  const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Function to handle form submission
+  // Fetch repositories
+  const { data: reposData, loading: reposLoading, error: reposError } = useQuery(GET_REPOSITORIES);
+  
+  // Create project mutation
+  const [createProject, { loading: createLoading, error: createError }] = useMutation(CREATE_PROJECT_MUTATION);
+
+  // Set project name from selected repo
+  useEffect(() => {
+    if (selectedRepoUrl 
+      // && !projectName
+    ) {
+      const selectedRepo = reposData?.repositories?.find((repo: Repository) => repo.clone_url === selectedRepoUrl);
+      if (selectedRepo) {
+        setProjectName(selectedRepo.name.replace(/\.git$/, '').replace(/-/g, " ").replace(/\b\w/g, (c:string)=> c.toUpperCase()));
+      }
+    }
+  }, [selectedRepoUrl, 
+    // projectName, 
+    reposData]);
+
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent default form submission
+    e.preventDefault();
 
     if (!projectName || !selectedRepoUrl) {
-      // Use the sonner toast function
-      toast("Missing Information", { // Title is the first argument
-        description: "Please enter a project name and select a repository.",
-
-        // type: "error", // use toast.error
-      });
+      toast.error("Please enter a project name and select a repository.");
       return;
     }
 
     try {
-      // Execute the create project mutation
-      const { data } = await createProjectMutation({
+      const { data } = await createProject({
         variables: { name: projectName, gitRepoUrl: selectedRepoUrl },
       });
 
-      console.log("Project created successfully:", data?.createProject);
+      toast.success(`Project "${data?.createProject?.name}" created successfully.`);
+      
+      if (onSuccess) onSuccess();
 
-      // Use the sonner toast function for success
-      toast("Project Created", { // Title
-        description: `Project "${data?.createProject?.name}" created successfully.`,
-        // type: "success", // Using type for styling,,
-      });
-
-      // Call the onSuccess callback if provided
-      if (onSuccess) {
-        onSuccess(); // Close the modal or perform other actions
-      }
-
-      // Optional: Clear form fields
       setProjectName('');
       setSelectedRepoUrl('');
-
+      setSearchTerm('');
+      setIsRepoDialogOpen(false);
+      router.push(`projects/${data?.createProject?.id}`)
     } catch (err: any) {
       console.error("Error creating project:", err);
-      // Use the sonner toast function for error
-      toast("Project Creation Failed", { // Title
-        description: err.message || "An error occurred while creating the project.",
-        // type: "error", // use toast.success
-      });
+      toast.error(err.message || "An error occurred while creating the project.");
     }
   };
 
-  // Function to handle repository selection from the RepoList component
-  const handleRepoSelect = (repoUrl: string) => {
-    setSelectedRepoUrl(repoUrl);
-    // Optional: Automatically set project name based on repo name?
-    // setProjectName(repoUrl.split('/').pop()?.replace('.git', '') || '');
-  };
+  // Filter repositories based on search term
+  const filteredRepos = reposData?.repositories?.filter((repo: Repository) =>
+    repo.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
+  // Get selected repo details
+  const selectedRepo = reposData?.repositories?.find((repo: Repository) => repo.clone_url === selectedRepoUrl);
+
+  console.log('selected trpo',selectedRepo)
   return (
     <form onSubmit={handleSubmit}>
       <div className="grid gap-4 py-4">
@@ -107,33 +131,116 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onSuccess }) => {
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
             className="col-span-3"
-            required // Make input required
+            required
           />
         </div>
 
         {/* Repository Selection */}
-        <div className="grid grid-cols-4 items-start gap-4"> {/* Align to top */}
-           <Label className="text-right mt-2"> {/* Adjust label alignment */}
-             Repository
-           </Label>
-           {/* RepoList component for selecting a repository */}
-           {/* Pass the selection handler and the currently selected URL */}
-           <div className="col-span-3 max-h-60 overflow-y-auto border rounded-md p-2"> {/* Added scroll and border */}
-             <RepoList onRepoSelect={handleRepoSelect} selectedRepoUrl={selectedRepoUrl} />
-           </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label className="text-right">
+            Repository
+          </Label>
+          <div className="col-span-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => {
+                setSearchTerm('');
+                setIsRepoDialogOpen(true);
+              }}
+              // disabled={reposLoading || reposError}
+            >
+              {selectedRepo ? selectedRepo.full_name : "Select repository..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              
+            </Button>
+          </div>
         </div>
-         {/* Display selected repo URL */}
-         {selectedRepoUrl && (
-             <div className="grid grid-cols-4 items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                 <span className="text-right">Selected:</span>
-                 <span className="col-span-3 truncate">{selectedRepoUrl}</span>
-             </div>
-         )}
       </div>
+
+      {/* Repository Selection Dialog */}
+      <Dialog open={isRepoDialogOpen} onOpenChange={setIsRepoDialogOpen}>
+        <DialogContent 
+          className="sm:max-w-[600px] max-h-[80vh] flex flex-col overflow-hidden"
+          onInteractOutside={(e) => {
+            const triggerButton = document.querySelector('button[aria-expanded="true"]');
+            if (triggerButton && triggerButton.contains(e.target as Node)) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Select a Repository</DialogTitle>
+          </DialogHeader>
+          
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search repositories..."
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          {/* Repository List */}
+          <ScrollArea className="flex-1 border rounded-md mt-4 overflow-y-auto">
+            {reposLoading ? (
+              <div className="p-4 space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : reposError ? (
+              <div className="p-4 text-center text-red-500">
+                Error loading repositories.
+              </div>
+            ) : (
+              <div className="divide-y">
+                {filteredRepos?.length ? (
+                  filteredRepos.map((repo: Repository) => (
+                    <button
+                      type="button"
+                      key={repo.html_url}
+                      className={cn(
+                        "w-full p-4 hover:bg-accent cursor-pointer flex items-center text-left",
+                        selectedRepoUrl === repo.clone_url && "bg-accent"
+                      )}
+                      onClick={() => {
+                        setSelectedRepoUrl(repo.clone_url);
+                        setIsRepoDialogOpen(false);
+                      }}
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium">{repo.name}</div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {repo.clone_url}
+                        </div>
+                      </div>
+                      {selectedRepoUrl === repo.clone_url && (
+                        <Check className="h-5 w-5 text-primary" />
+                      )}
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No repositories found
+                  </div>
+                )}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       <DialogFooter>
-        {/* Submit Button */}
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Creating...' : 'Create Project'}
+        <Button 
+          type="submit" 
+          disabled={reposLoading || createLoading || !selectedRepoUrl || !projectName}
+        >
+          {createLoading ? 'Creating...' : 'Create Project'}
         </Button>
       </DialogFooter>
     </form>
