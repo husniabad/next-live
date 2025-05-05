@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { EllipsisVerticalIcon } from '@heroicons/react/24/outline'; // Example icon (install @heroicons/react)
 import { useMutation, gql } from '@apollo/client'; // For potential future mutations (e.g., redeploy, delete)
 import { toast } from 'sonner'; // Assuming sonner for notifications
-import { timeAgo } from '@/lib/utils';
+import { timeAgo, getStatusBadgeVariant } from '@/lib/utils';
 
 // Define the expected structure of a deployment object
 interface Deployment {
@@ -27,20 +27,7 @@ interface DeploymentItemProps {
   onDeploymentAction?: () => void; // Optional callback to refetch deployments after an action
 }
 
-// Helper function to determine badge color based on deployment status
-const getStatusBadgeVariant = (status: string) => {
-  switch (status) {
-    case 'success':
-      return 'default'; // Greenish color by default in shadcn
-    case 'failed':
-      return 'destructive'; // Red color
-    case 'deploying':
-    case 'pending':
-      return 'secondary'; // Grayish color
-    default:
-      return 'outline'; // Default outline
-  }
-};
+
 
 // Placeholder mutation for future redeploy functionality
 const REDEPLOY_MUTATION = gql`
@@ -116,15 +103,18 @@ const DeploymentItem: React.FC<DeploymentItemProps> = ({ deployment, onDeploymen
          }
     };
 
+    const deploymentDetailLink = `/deployments/${deployment.id}`
 
   return (
     <Card className="flex flex-col justify-between"> {/* Flex column layout */}
       <CardHeader>
         <div className="flex items-center justify-between">
           {/* Deployment Version/ID */}
-          <CardTitle className="text-lg font-mono truncate">
-            Deployment #{deployment.id} - <span className="text-sm text-gray-500 dark:text-gray-400">{deployment.version.slice(0, 7)}</span> {/* Display first 7 chars of version */}
-          </CardTitle>
+          <Link href={deploymentDetailLink} className='"hover:underline"'>
+            <CardTitle className="text-lg font-mono truncate">
+              Deployment #{deployment.id} - <span className="text-sm text-gray-500 dark:text-gray-400">{deployment.version.slice(0, 7)}</span> {/* Display first 7 chars of version */}
+            </CardTitle>
+          </Link>
           {/* Options Dropdown Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -73,8 +73,11 @@ type LoginResponse {
 
 type Repository {
   name: String!
+  full_name:String!
   html_url: String!
-  # Add other relevant fields from the Git provider's API
+  clone_url:String!
+  size:Int
+  description:String
 }
 
 type Query {

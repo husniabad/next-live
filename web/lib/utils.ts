@@ -5,6 +5,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export const getStatusBadgeVariant = (status: string) => {
+  switch (status) {
+    case 'success':
+      return 'default'; // Greenish color by default in shadcn
+    case 'failed':
+      return 'destructive'; // Red color
+    case 'deploying':
+    case 'pending':
+      return 'secondary'; // Grayish color
+    default:
+      return 'outline'; // Default outline
+  }
+};
+
 
 export function timeAgo(timestamp: number | string): string {
   const now = Date.now();

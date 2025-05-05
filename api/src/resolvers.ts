@@ -109,8 +109,11 @@ const resolvers = {
         console.log('repos:', response);
         return response.data.map((repo: any) => ({
           name: repo.name,
+          full_name: repo.full_name,
           html_url: repo.html_url,
-          // Map other relevant fields
+          clone_url: repo.clone_url,
+          size : repo.size,
+          description : repo.description
         }));
       } catch (error: any) {
         console.error('Error fetching GitHub repos:', error.message);
@@ -130,6 +133,7 @@ const resolvers = {
         where: { id: id, project: { userId: userId } },
         select: {
           id: true,
+          projectId:true,
           status: true,
           version: true,
           deploymentUrl: true,
