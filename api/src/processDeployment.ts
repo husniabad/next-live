@@ -7,7 +7,8 @@ import os from 'os';
 import { cleanUpCloneDirectory, cloneRepository } from './gitService'; // Import gitService functions
 import { buildProjectImage, extractBuildArtifacts } from './buildService'; // Import buildService functions
 import { startApplication } from './servingService'; // Import servingService function
-import { configureNginxForDeployment } from './proxyService'; // Import proxyService function
+import { configureNginxForDeployment } from './proxyService'; 
+import { createWriteStream, WriteStream } from 'fs';
 
 // Create a new Prisma client instance for the background process.
 // This is generally safer than sharing the main resolver's instance
@@ -34,6 +35,10 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
     const deploymentWorkingDir = path.join(baseDeploymentDir, deploymentId.toString()); // Specific dir for build output
     const buildOutputPath = path.join(deploymentWorkingDir, 'build-output'); // Path to store build artifacts
 
+    const logFileName = `deployment-${deploymentId}.log`;
+    const logFilePath = path.join(deploymentWorkingDir, logFileName);
+    console.log(`[Deployment ${deploymentId}] Log file path: ${logFilePath}`);
+
     // Define the base directory for the temporary repository clone within WSL2 home
     // This is the recommended place for Git operations in WSL2
     const wsl2CloneBaseDir = path.join(os.homedir(), `.code-catalyst-clones`, `deployment-${deploymentId}-repo`);
@@ -46,7 +51,10 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
     try {
         // Update status to deploying
         console.log(`[Deployment ${deploymentId}] Updating status to 'deploying'.`);
-        await prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'deploying' } });
+        await prisma.deployment.update({ where: { id: deploymentId }, data: { 
+            status: 'deploying' ,
+            logFilePath: logFilePath,
+        } });
 
         // Ensure build output directory exists on the host filesystem
          try {
@@ -63,27 +71,27 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
         // 1. Clone Repository (into WSL2 home)
         console.log(`[Deployment ${deploymentId}] Cloning ${gitRepoUrl} into WSL2 home.`);
         // cloneRepository should handle creating the necessary parent directories in WSL2 home
-        clonedRepoPath = await cloneRepository(gitRepoUrl, deploymentId);
+        clonedRepoPath = await cloneRepository(gitRepoUrl, deploymentId, logFilePath);
         console.log(`[Deployment ${deploymentId}] Repository cloned successfully to ${clonedRepoPath}.`);
 
         // 2. Build Docker Image (using cloned repo as context)
         const imageName = `project-${projectId}-${deploymentId}`;
         console.log(`[Deployment ${deploymentId}] Building image: ${imageName} from ${clonedRepoPath}.`);
         // buildProjectImage should return an object like { dockerfileUsed: string }
-        const buildResult = await buildProjectImage(clonedRepoPath, imageName);
+        const buildResult = await buildProjectImage(clonedRepoPath, imageName, logFilePath);
         dockerfileUsed = buildResult.dockerfileUsed; // Capture which Dockerfile was used
         console.log(`[Deployment ${deploymentId}] Image ${imageName} built successfully (${dockerfileUsed}).`);
 
         // 3. Artifact Extraction (from image to buildOutputPath)
         console.log(`[Deployment ${deploymentId}] Starting artifact extraction from image ${imageName} to ${buildOutputPath}.`);
         // extractBuildArtifacts copies from the image to the host buildOutputPath
-        await extractBuildArtifacts(imageName, buildOutputPath);
+        await extractBuildArtifacts(imageName, buildOutputPath, logFilePath);
         console.log(`[Deployment ${deploymentId}] Artifacts extracted successfully to ${buildOutputPath}.`);
 
         // Cleanup temporary clone directory in WSL2 home after build/extraction
          console.log(`[Deployment ${deploymentId}] Cleaning up temporary clone directory: ${wsl2CloneBaseDir}`);
          // cleanUpCloneDirectory should handle removing the entire directory created by cloneRepository
-         await cleanUpCloneDirectory(wsl2CloneBaseDir);
+         await cleanUpCloneDirectory(wsl2CloneBaseDir, logFilePath);
          console.log(`[Deployment ${deploymentId}] Temporary clone directory cleaned up.`);
 
 
@@ -98,7 +106,7 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
         const deploymentUrl = `http://deploy-${deploymentId}.${userId}.yourplatform.com`; // Use a consistent subdomain pattern
         console.log(`[Deployment ${deploymentId}] Configuring Nginx. Public URL: ${deploymentUrl}, Internal Port: ${internalPort}.`);
         // configureNginxForDeployment should write the config, create symlink, and reload Nginx (requires sudoers setup)
-        await configureNginxForDeployment(deploymentUrl, internalPort, deploymentId, buildOutputPath);
+        await configureNginxForDeployment(deploymentUrl, internalPort, deploymentId, buildOutputPath, logFilePath);
         console.log(`[Deployment ${deploymentId}] Nginx configured successfully.`);
 
 
@@ -151,7 +159,7 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
          // Check if clonedRepoPath was successfully assigned before attempting cleanup
          if (wsl2CloneBaseDir && clonedRepoPath) { // Ensure paths were defined and cloning started
              console.log(`[Deployment ${deploymentId}] Cleaning up temporary clone directory in WSL2 home on failure: ${wsl2CloneBaseDir}`);
-              cleanUpCloneDirectory(wsl2CloneBaseDir).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of WSL2 clone directory failed on error:`, cleanErr));
+              cleanUpCloneDirectory(wsl2CloneBaseDir, logFilePath).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of WSL2 clone directory failed on error:`, cleanErr));
          }
         // TODO: Add cleanup for partially created Docker images or PM2 processes on failure if necessary
         // This can be complex depending on which step failed.

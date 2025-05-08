@@ -64,6 +64,7 @@ model Deployment {
   errorMessage  String?
   dockerfileUsed String?
   createdAt     DateTime         @default(now())
+  logFilePath String?
 }
 
 model Domain {

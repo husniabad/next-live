@@ -8,6 +8,7 @@ import { processDeployment } from './processDeployment'; // Import the backgroun
 import jwt from 'jsonwebtoken';
 import { URL } from 'url';
 import axios from 'axios';
+import fs from 'fs/promises'
 // Removed p-limit import
 // fs and os are not directly needed in resolvers.ts anymore unless used by other resolvers
 // path is used by createProject, so keep it
@@ -141,6 +142,7 @@ const resolvers = {
           internalPort: true,
           dockerfileUsed: true,
           errorMessage: true,
+          logFilePath: true,
           createdAt: true,
         },
       });
@@ -151,6 +153,39 @@ const resolvers = {
 
       return deployment;
     },
+
+    deploymentLogs : async (_:any, {id}:{id:string}, {userId, prisma}:any) => {
+      if (!userId){
+        throw new Error('Not Authenticated')
+      }
+
+      console.log(`fetching logs for deployment: ${id} by user: ${userId}`)
+
+      const deployment = await prisma.deployment.findFirst({
+        where: {
+          id:id,
+          // userId:userId
+        },
+        select : {logFilePath: true}
+      })
+      
+      if (!deployment || !deployment.logFilePath) {
+        console.log(`Deployment not found or no logs available for deployment: ${id}`)
+        throw new Error('Deployment not found or no logs available.');
+      } 
+      const logFilePath = deployment.logFilePath;
+    
+      try {
+        const logsContent = await fs.readFile(logFilePath, 'utf8');
+        console.log(`Logs for deployment ${id} fetched successfully.`);
+        return logsContent;
+      }catch (error: any) {
+        console.error(`Failed to read file ${logFilePath} for deployment ${id}:`, error.message);
+        throw new Error(`Failed to read log file: ${error.message}`);
+      }
+    }
+
+
   },
   Mutation: {
     loginGit: async (_: any, { provider, code }: any) => {

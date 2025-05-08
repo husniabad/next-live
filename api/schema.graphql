@@ -49,6 +49,7 @@ type Deployment {
   dockerfileUsed: String
   errorMessage: String
   createdAt: String!
+  logFilePath: String
 }
 
 type Domain {
@@ -86,6 +87,7 @@ type Query {
   me: User
   repositories: [Repository!]! @auth
   deploymentStatus(id: Int!): Deployment
+  deploymentLogs(id: Int!): String
 }
 
 type Mutation {
