@@ -62,7 +62,7 @@ app.post('/webhook', async (req: Request, res: Response) => {
   const repoPath = path.join(__dirname, 'repositories', projectId.toString());
   const buildOutputPath = path.join(__dirname, 'builds', projectId.toString());
   try {
-    await buildProjectImage(repoPath, buildOutputPath);
+    await buildProjectImage(repoPath, buildOutputPath,'logFilePath');
     console.log('Project build success');
     res.sendStatus(200);
   } catch (e) {
