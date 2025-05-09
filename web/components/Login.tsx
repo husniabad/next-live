@@ -63,7 +63,7 @@ const LoginButton = () => { // Renamed component from Login to LoginButton
         console.log("Login successful, token stored.");
 
         // Redirect the user to the dashboard page after successful login
-        router.push('/dashboard'); // Use router.push for internal navigation
+        router.push('/'); // Use router.push for internal navigation
       } else {
          setError('Login failed: No token received.');
          console.error('Login mutation did not return a token.');

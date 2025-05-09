@@ -216,6 +216,8 @@ const resolvers = {
             },
             { headers: { Accept: 'application/json' } }
           );
+          console.log('git user', response.data);
+
 
           const params = new URLSearchParams(response.data);
 
@@ -234,7 +236,6 @@ const resolvers = {
             avatarUrl = userInfoResponse.data.avatar_url; 
             profileUrl = userInfoResponse.data.html_url; 
             name = userInfoResponse.data.name; 
-            console.log('git user', userInfoResponse.data);
 
             // Optionally fetch emails if the primary email is private
             // if (!email) {
