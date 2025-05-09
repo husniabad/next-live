@@ -1,84 +1,57 @@
-// web/app/page.tsx
+'use client'; // This is a client component because it uses hooks like useRouter and useAuth
 
-'use client'; // This component uses client-side features like hooks if auth check is added
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation'; // For App Router navigation
+import { useAuth } from '@/lib/auth'; // Import the authentication hook
 
-import Link from 'next/link';
-import { Button } from '@/components/ui/button'; // Assuming shadcn button import path
-import Login from '@/components/Login'; // Assuming Login component path (or LoginButton)
-// Remove the import of ApolloProvider and the client instance here
-// import { ApolloProvider } from '@apollo/client';
-// import client from '@/lib/apolloClient';
+// Import the components for the dashboard
+import DashboardHeader from '@/components/DashboardHeader';
+import ProjectList from '@/components/ProjectList';
+// import CreateProjectButton from '@/components/CreateProjectButton'; // Button might be in header
 
+const DashboardPage = () => {
+  const { isAuthenticated, isLoading } = useAuth(); // Get auth state from context
+  const router = useRouter(); // Get router instance
 
-// This is the main landing page component.
-// It will be the entry point for unauthenticated users.
-// Authentication check and redirection logic will be added here later.
+  // Effect to check authentication status and redirect if not authenticated
+  useEffect(() => {
+    // Only redirect if loading is complete and user is NOT authenticated
+    if (!isLoading && !isAuthenticated) {
+      console.log("DashboardPage: Not authenticated, redirecting to home.");
+      router.push('/login'); // Redirect to the home page if not logged in
+    }
+    // This effect depends on isLoading and isAuthenticated state changes
+  }, [isAuthenticated, isLoading, router]); // Include router in dependencies
 
-const HomePage = () => {
-  // TODO: Implement authentication check here.
-  // If authenticated, redirect to /dashboard.
-  // Example (requires useRouter from 'next/navigation' and useAuth hook from lib/auth.ts):
-  /*
-  const { isAuthenticated, isLoading } = useAuth(); // Assuming useAuth hook from lib/auth.ts
-  const router = useRouter();
-
-  // Redirect authenticated users to the dashboard
-  if (isAuthenticated && !isLoading) {
-    router.push('/dashboard');
-    return null; // Or a loading spinner
-  }
-
-  // Show loading state while checking auth
+  // Show a loading state while the authentication status is being checked
   if (isLoading) {
-      return <div>Loading...</div>; // Or a loading spinner component
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+        <p>Loading dashboard...</p> {/* Or a more sophisticated loading spinner */}
+      </div>
+    );
   }
-  */
 
-  // If not authenticated (or while auth is being checked initially), display the landing page content
-  return (
-    // Remove the incorrect ApolloProvider wrapping here
-    // <ApolloProvider client={client}>
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 text-gray-100 p-4">
-       <h1 className="text-5xl font-bold mb-6 text-center text-white">Welcome to Next Live</h1> {/* Ensured title is white */}
-       <p className="text-xl mb-8 text-center max-w-2xl text-gray-300"> {/* Slightly lighter text for paragraph */}
-         Build, deploy, and host your web applications with ease. Get your code from repository to live URL in minutes. **Specializing in Next.js projects.**
-       </p>
+  // If authenticated, render the dashboard content
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
+        {/* Dashboard Header with user info and create project button */}
+        <DashboardHeader />
 
-       <div className="mb-8 text-center">
-         <h2 className="text-2xl font-semibold mb-4 text-white">Our Services:</h2> {/* Ensured heading is white */}
-         <ul className="list-disc list-inside text-lg text-left inline-block text-gray-300"> {/* Slightly lighter text for list */}
-           <li>Connect with Git providers (GitHub)</li>
-           <li>Automatic Docker-based builds</li>
-           <li>Support for custom Dockerfiles</li>
-           <li>Asynchronous deployments with concurrency limits</li>
-           <li>Dynamic Nginx proxying</li>
-           <li>Real-time deployment status tracking</li>
-           {/* Added explicit mention of Next.js */}
-           <li>Optimized builds for Next.js applications (including standalone output)</li>
-         </ul>
-       </div>
-       {/* Placeholder for the Login Button */}
-       {/* This button will initiate the GitHub OAuth flow */}
-       <div className="mt-8">
-         {/* Use the Login component (or LoginButton if renamed) */}
-         <Login/>
-       </div>
+        {/* Main content area - Project List */}
+        <main className="container mx-auto mt-8">
+          <h2 className="text-3xl font-semibold mb-6 text-gray-800 dark:text-gray-200">Your Projects</h2>
+          {/* Project List component will fetch and display projects */}
+          <ProjectList />
+        </main>
+      </div>
+    );
+  }
 
-       {/* Optional: Add links to documentation, features, etc. */}
-       {/*
-       <div className="mt-8 text-center">
-           <Link href="/features" legacyBehavior>
-               <a className="text-blue-400 hover:underline mx-2">Learn More</a>
-           </Link>
-           <Link href="/docs" legacyBehavior>
-                <a className="text-blue-400 hover:underline mx-2">Documentation</a>
-           </Link>
-       </div>
-       */}
-     </div>
-     // Remove the closing tag for the incorrect ApolloProvider
-     // </ApolloProvider>
-  );
+  // If not authenticated and loading is complete, this return should technically not be reached
+  // because of the redirect in useEffect, but including a fallback is good practice.
+  return null; // Or a message indicating redirection
 };
 
-export default HomePage;
+export default DashboardPage;

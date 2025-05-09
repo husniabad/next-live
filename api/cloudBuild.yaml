@@ -1,0 +1,42 @@
+steps:
+# Step 1: Build the Docker image
+# This step uses the 'docker' builder image provided by Cloud Build.
+# It executes the 'docker build' command.
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    [
+      'build', # The docker command to run
+      '-t', # Tag the image
+      # The image tag includes the Artifact Registry location and uses Cloud Build's built-in variables:
+      # $_REGION: Substitution variable for the GCP region (set in the trigger)
+      # $PROJECT_ID: Built-in Cloud Build variable for your GCP project ID
+      # $_REPO_NAME: Substitution variable for your Artifact Registry repository name (set in the trigger)
+      # $_IMAGE_NAME: Substitution variable for the image name (set in the trigger)
+      # $_TAG_NAME: Substitution variable for the image tag (set in the trigger, can use $SHORT_SHA)
+      '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG_NAME}',
+      '.', # The build context: '.' means the root of the fetched repository
+    ]
+  # Optional: Pass build arguments if needed (uncomment and replace ARG_NAME)
+  # args: ['build', '--build-arg', 'ARG_NAME=value', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG_NAME}', '.']
+
+# Step 2: Push the Docker image to Artifact Registry
+# This step also uses the 'docker' builder and executes the 'docker push' command.
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    [
+      'push', # The docker command to run
+      # The image name to push (must match the tag used in the build step)
+      '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG_NAME}',
+    ]
+
+# Define substitution variables. These provide default values but can be overridden in the trigger.
+# Using substitutions makes the cloudbuild.yaml file reusable.
+substitutions:
+  _REGION: us-central1 # Default GCP region (change to your desired region)
+  _REPO_NAME: next-live-repo # Default Artifact Registry repository name
+  _IMAGE_NAME: backend-api # Default name for your backend API image
+  _TAG_NAME: latest # Default image tag (consider using $SHORT_SHA for commit hash)
+
+# Specify where to store the built images (Artifact Registry)
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG_NAME}'
