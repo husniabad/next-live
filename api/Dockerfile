@@ -16,7 +16,8 @@ COPY . .
 
 # Build the TypeScript code
 # This command runs your TypeScript compiler (e.g., tsc)
-RUN npm run build  -- --noEmitOnError false
+# NOTE: This step is effectively bypassed by the cloudbuild.yaml configuration below
+RUN npm run build
 
 # --- Production Stage ---
 # Use a smaller, production-ready base image
@@ -30,6 +31,7 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 
 # Copy the compiled JavaScript output from the build stage
+# NOTE: The 'dist' directory will be copied from the Cloud Build workspace in cloudbuild.yaml
 COPY --from=builder /app/dist ./dist
 
 # Copy other necessary files for runtime (like prisma schema, .env if used at runtime)
@@ -43,9 +45,8 @@ COPY --from=builder /app/dist ./dist
 # Expose the port your application listens on
 # Cloud Run injects the PORT environment variable, your app must listen on it.
 # The EXPOSE instruction is documentation, the runtime PORT variable is what matters.
-EXPOSE 8080 
-# Common practice, but your app should use process.env.PORT
+EXPOSE 8080 # Common practice, but your app should use process.env.PORT
 
 # Command to run the application
-# This should point to your compiled entry file (e.g., dist/index.js)
+# This should point to your compiled entry file (e.js., dist/index.js)
 CMD ["node", "dist/index.js"]
