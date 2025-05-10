@@ -32,6 +32,7 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # Copy the compiled JavaScript output from the build stage
 # NOTE: The 'dist' directory will be copied from the Cloud Build workspace in cloudbuild.yaml
+# This COPY command is here for documentation but the actual copy happens in cloudbuild.yaml
 COPY --from=builder /app/dist ./dist
 
 # Copy other necessary files for runtime (like prisma schema, .env if used at runtime)
