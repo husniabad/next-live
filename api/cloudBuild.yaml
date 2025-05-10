@@ -34,7 +34,6 @@ steps:
 
 options:
   logging: CLOUD_LOGGING_ONLY  # or another valid option
-logs_bucket: gs://your-logs-bucket
 
 substitutions:
   _REGION: us-central1 # Default GCP region (change to your desired region)
