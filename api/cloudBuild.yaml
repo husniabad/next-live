@@ -50,6 +50,9 @@ steps:
     ]
   dir: 'api' # Maintain the same working directory
 
+  options:
+    logging: CLOUD_LOGGING_ONLY
+
 # Define substitution variables. These provide default values but can be overridden in the trigger.
 # Using substitutions makes the cloudbuild.yaml file reusable.
 substitutions:
