@@ -9,6 +9,8 @@ steps:
         '.'
       ]
     dir: 'api'  # ← This makes all commands run from the api/ folder
+    env:
+     - 'NODE_ENV=development'
 
   # Step 2: Push the Docker image
   - name: 'gcr.io/cloud-builders/docker'
@@ -31,5 +33,4 @@ substitutions:
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG_NAME}'
 
-env:
-  - 'NODE_ENV=development'
+
