@@ -35,6 +35,12 @@ COPY --from=builder /app/node_modules ./node_modules
 # This COPY command is here for documentation but the actual copy happens in cloudbuild.yaml
 COPY --from=builder /app/dist ./dist
 
+# --- ADD THIS LINE ---
+# Copy the schema.graphql file from the builder stage to the final image
+COPY --from=builder /app/schema.graphql ./schema.graphql
+# --- END ADD THIS LINE ---
+
+
 # Copy other necessary files for runtime (like prisma schema, .env if used at runtime)
 # Adjust these COPY commands based on what your application needs at runtime
 # For example, if your app reads schema.prisma at runtime:
@@ -46,7 +52,7 @@ COPY --from=builder /app/dist ./dist
 # Expose the port your application listens on
 # Cloud Run injects the PORT environment variable, your app must listen on it.
 # The EXPOSE instruction is documentation, the runtime PORT variable is what matters.
-EXPOSE 8080 
+EXPOSE 8080
 # Common practice, but your app should use process.env.PORT
 
 # Command to run the application
