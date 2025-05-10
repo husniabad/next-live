@@ -67,5 +67,5 @@ images:
 # Optional: Configure logging for the build
 # If you encounter errors related to logs_bucket or service_account,
 # you might need to explicitly set the logging option here or in the trigger.
-# options:
-#   logging: CLOUD_LOGGING_ONLY # Example: Send logs only to Cloud Logging
+options:
+  logging: CLOUD_LOGGING_ONLY # Example: Send logs only to Cloud Logging
