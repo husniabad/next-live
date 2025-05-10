@@ -46,7 +46,8 @@ COPY --from=builder /app/dist ./dist
 # Expose the port your application listens on
 # Cloud Run injects the PORT environment variable, your app must listen on it.
 # The EXPOSE instruction is documentation, the runtime PORT variable is what matters.
-EXPOSE 8080 # Common practice, but your app should use process.env.PORT
+EXPOSE 8080 
+# Common practice, but your app should use process.env.PORT
 
 # Command to run the application
 # This should point to your compiled entry file (e.js., dist/index.js)
