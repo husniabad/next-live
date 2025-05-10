@@ -30,3 +30,6 @@ substitutions:
 
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG_NAME}'
+
+env:
+  - 'NODE_ENV=development'
