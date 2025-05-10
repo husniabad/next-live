@@ -31,6 +31,11 @@ steps:
 
 # Define substitution variables. These provide default values but can be overridden in the trigger.
 # Using substitutions makes the cloudbuild.yaml file reusable.
+
+options:
+  logging: CLOUD_LOGGING_ONLY  # or another valid option
+logs_bucket: gs://your-logs-bucket
+
 substitutions:
   _REGION: us-central1 # Default GCP region (change to your desired region)
   _REPO_NAME: next-live-repo # Default Artifact Registry repository name
