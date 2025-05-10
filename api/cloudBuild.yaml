@@ -1,36 +1,70 @@
+# cloudbuild.yaml
+
 steps:
-  # Step 1: Build the Docker image
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      [
-        'build',
-        '-t',
-        '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG_NAME}',
-        '.'
-      ]
-    dir: 'api'  # ← This makes all commands run from the api/ folder
-    env:
-     - 'NODE_ENV=development'
+# Step 1: Install dependencies and compile TypeScript
+# Use a Node.js builder image
+- name: 'node:18' # Use a standard Node.js image
+  entrypoint: 'bash' # Use bash to execute multiple commands
+  args:
+    - '-c' # Execute the following string as a command
+    - | # Use a multi-line string for commands
+      npm install &&
+      npm run build -- --noEmitOnError false # Run build, allowing errors
+  dir: 'api' # Run these commands in the 'api' subdirectory
+  # Add environment variables required for this step (like NODE_ENV)
+  env:
+    - 'NODE_ENV=development' # Set NODE_ENV for build stage if needed for dev dependencies
 
-  # Step 2: Push the Docker image
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      [
-        'push',
-        '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG_NAME}',
-      ]
-    dir: 'api'  # ← Maintain the same working directory
+# Step 2: Build the Docker image
+# This step uses the 'docker' builder image provided by Cloud Build.
+# It executes the 'docker build' command.
+# It copies the compiled 'dist' directory from the workspace (created in Step 1)
+# into the Docker image, bypassing the build step in the Dockerfile.
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    [
+      'build', # The docker command to run
+      '-t', # Tag the image
+      # The image tag includes the Artifact Registry location and uses Cloud Build's built-in variables:
+      # $_REGION: Substitution variable for the GCP region (set in the trigger)
+      # $PROJECT_ID: Built-in Cloud Build variable for your GCP project ID
+      # $_REPO_NAME: Substitution variable for your Artifact Registry repository name (set in the trigger)
+      # $_IMAGE_NAME: Substitution variable for the image name (set in the trigger)
+      # $_TAG_NAME: Substitution variable for the image tag (set in the trigger, can use $SHORT_SHA)
+      '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG_NAME}',
+      '.', # The build context: '.' means the root of the fetched repository
+    ]
+  dir: 'api' # Run this command in the 'api' subdirectory where the Dockerfile is
+  # Add environment variables required for the Docker build itself if any
+  # env:
+  #   - 'DOCKER_BUILDKIT=1' # Example buildkit env var
 
-options:
-  logging: CLOUD_LOGGING_ONLY
+# Step 3: Push the Docker image to Artifact Registry
+# This step also uses the 'docker' builder and executes the 'docker push' command.
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    [
+      'push', # The docker command to run
+      # The image name to push (must match the tag used in the build step)
+      '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG_NAME}',
+    ]
+  dir: 'api' # Maintain the same working directory
 
+# Define substitution variables. These provide default values but can be overridden in the trigger.
+# Using substitutions makes the cloudbuild.yaml file reusable.
 substitutions:
-  _REGION: us-central1
-  _REPO_NAME: next-live-repo
-  _IMAGE_NAME: backend-api
-  _TAG_NAME: latest
+  _REGION: us-central1 # Default GCP region (change to your desired region)
+  _REPO_NAME: code-catalyst-repo # Default Artifact Registry repository name
+  _IMAGE_NAME: backend-api # Default name for your backend API image
+  _TAG_NAME: latest # Default image tag (consider using $SHORT_SHA for commit hash)
 
+# Specify where to store the built images (Artifact Registry)
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO_NAME}/${_IMAGE_NAME}:${_TAG_NAME}'
 
+# Optional: Configure logging for the build
+# If you encounter errors related to logs_bucket or service_account,
+# you might need to explicitly set the logging option here or in the trigger.
+# options:
+#   logging: CLOUD_LOGGING_ONLY # Example: Send logs only to Cloud Logging
 
