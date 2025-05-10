@@ -1,30 +1,44 @@
-# Use a Node.js base image
-FROM node:18-slim
+# --- Build Stage ---
+# Use a Node.js image with build tools
+FROM node:18 AS builder
 
-# Set the working directory inside the container
+# Set the working directory inside the build stage
 WORKDIR /app
 
 # Copy package.json and package-lock.json (or yarn.lock/pnpm-lock.yaml)
-# to install dependencies. Use a wildcard to copy both if they exist.
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --production 
-# Install production dependencies
+# Install dependencies including devDependencies for building
+RUN npm install
 
 # Copy the rest of your backend source code
-# Assuming your compiled JavaScript output is in a 'dist' directory
 COPY . .
 
-# Build the TypeScript code (if not already built in a previous stage/step)
-# If you build locally before copying, you can remove this step.
-# If you build inside the container, ensure dev dependencies are installed temporarily or use a multi-stage build.
-# Example if building inside container (requires dev dependencies):
-# COPY . .
-# RUN npm install # Install all dependencies including dev for build
-# RUN npm run build # Run your build command (e.g., tsc)
-# Remove dev dependencies after build (optional but recommended for smaller image)
-# RUN npm prune --production
+# Build the TypeScript code
+# This command runs your TypeScript compiler (e.g., tsc)
+RUN npm run build
+
+# --- Production Stage ---
+# Use a smaller, production-ready base image
+FROM node:18-slim
+
+# Set the working directory inside the final stage
+WORKDIR /app
+
+# Copy only production dependencies from the build stage
+# This is more efficient than running npm install again
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy the compiled JavaScript output from the build stage
+COPY --from=builder /app/dist ./dist
+
+# Copy other necessary files for runtime (like prisma schema, .env if used at runtime)
+# Adjust these COPY commands based on what your application needs at runtime
+# For example, if your app reads schema.prisma at runtime:
+# COPY --from=builder /app/prisma ./prisma
+# If your app reads a .env file at runtime (though Cloud Run env vars are preferred):
+# COPY --from=builder /app/.env ./.env
+
 
 # Expose the port your application listens on
 # Cloud Run injects the PORT environment variable, your app must listen on it.
