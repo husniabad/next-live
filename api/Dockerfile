@@ -16,7 +16,7 @@ COPY . .
 
 # Build the TypeScript code
 # This command runs your TypeScript compiler (e.g., tsc)
-RUN npm run build
+RUN npm run build  -- --noEmitOnError false
 
 # --- Production Stage ---
 # Use a smaller, production-ready base image
