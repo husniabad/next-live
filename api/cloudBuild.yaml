@@ -33,7 +33,7 @@ steps:
 # Using substitutions makes the cloudbuild.yaml file reusable.
 
 options:
-  logging: CLOUD_LOGGING_ONLY  # or another valid option
+  logs_bucket: gs://your-logs-bucket   # or another valid option
 
 substitutions:
   _REGION: us-central1 # Default GCP region (change to your desired region)
