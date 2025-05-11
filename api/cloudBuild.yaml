@@ -56,7 +56,7 @@ steps:
 # Using substitutions makes the cloudbuild.yaml file reusable.
 substitutions:
   _REGION: us-central1 # Default GCP region (change to your desired region)
-  _REPO_NAME: code-catalyst-repo # Default Artifact Registry repository name
+  _REPO_NAME: next-live-repo # Default Artifact Registry repository name
   _IMAGE_NAME: backend-api # Default name for your backend API image
   _TAG_NAME: latest # Default image tag (consider using $SHORT_SHA for commit hash)
 
