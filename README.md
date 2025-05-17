@@ -19,7 +19,7 @@ A platform for building, deploying, and hosting web applications, inspired by pl
 * **Process Management:** PM2
 * **Reverse Proxy:** Nginx
 * **Authentication:** JWT, OAuth (GitHub)
-* **Utilities:** `p-limit` (or custom in-memory queue), `axios`, `path`, `fs`, `os`, `url`
+* **Utilities:** Custom in-memory queue
 
 ## Requirements
 
