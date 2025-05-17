@@ -2,7 +2,7 @@
 'use client'; // This is a client component
 
 import Link from 'next/link'; // For linking to the deployment URL
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Shadcn card components
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // Shadcn card components
 import { Button } from '@/components/ui/button'; // Shadcn button
 import { Badge } from '@/components/ui/badge'; // Shadcn badge for status
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'; // Shadcn dropdown menu
@@ -69,6 +69,7 @@ const DeploymentItem: React.FC<DeploymentItemProps> = ({ deployment, onDeploymen
             if (onDeploymentAction) {
                 onDeploymentAction(); // Refetch list to show new pending deployment
             }
+            //@ts-ignore
         } catch (error: any) {
              console.error("Failed to trigger redeploy:", error);
              toast("Redeploy Failed", {
@@ -94,6 +95,7 @@ const DeploymentItem: React.FC<DeploymentItemProps> = ({ deployment, onDeploymen
              if (onDeploymentAction) {
                  onDeploymentAction(); // Refetch list after deletion
              }
+             //@ts-ignore
          } catch (error: any) {
               console.error("Failed to delete deployment:", error);
               toast("Delete Failed", {

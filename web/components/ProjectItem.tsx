@@ -44,7 +44,7 @@ const getStatusBadgeVariant = (status?: string | null) => {
   }
 };
 
-const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated }) => {
+const ProjectItem: React.FC<ProjectItemProps> = ({ project }) => {
 
     // Function to handle triggering a new deployment (placeholder)
     const handleDeploy = () => {

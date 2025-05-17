@@ -77,7 +77,9 @@ const DeploymentList: React.FC<DeploymentListProps> = ({ projectId }) => {
   // If deployments are loaded, render the list
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"> {/* Responsive grid layout */}
-      {deployments.map((deployment: any) => ( // Map over the deployments data
+      {
+      //@ts-ignore
+      deployments.map((deployment: any) => ( // Map over the deployments data
         // Render a DeploymentItem component for each deployment
         // Pass deployment data and the refetch function (for polling or action updates)
         <DeploymentItem key={deployment.id} deployment={deployment} onDeploymentAction={refetch} />

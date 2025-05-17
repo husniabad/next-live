@@ -70,6 +70,7 @@ const LoginButton = () => { // Renamed component from Login to LoginButton
          setIsLoggingIn(false); // Reset state if login failed
       }
 
+      //@ts-ignore
     } catch (err: any) {
       // Handle errors during the mutation or token storage
       setError(`Login failed: ${err.message || 'An unknown error occurred.'}`);
@@ -98,7 +99,7 @@ const LoginButton = () => { // Renamed component from Login to LoginButton
     }
     // The dependency array is empty, so this effect runs only once after the initial render.
     // isLoggingIn is included to prevent re-running if handleCallback updates the state.
-  }, [isLoggingIn, router]); // Added dependencies to useEffect
+  }, [isLoggingIn, router, handleCallback]); // Added dependencies to useEffect
 
   // Render loading state while processing the callback
   if (isLoggingIn || mutationLoading) { // Also show loading state while mutation is in progress

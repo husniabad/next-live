@@ -5,9 +5,7 @@ import { useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation'; // For App Router navigation and params
 import { useAuth } from '@/lib/auth'; // Import the authentication hook
 import DeploymentStatusDetails from '@/components/DeploymentStatusDetails'; // Import the DeploymentStatusDetails component
-import { Button } from '@/components/ui/button'; // Assuming shadcn button
-import Link from 'next/link'; // For back button
-import { ArrowLeftIcon } from '@heroicons/react/24/outline'; // Example icon for back button
+
 
 const DeploymentDetailPage = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth(); // Get auth state

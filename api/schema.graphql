@@ -1,3 +1,4 @@
+# api/schema.graphql
 directive @auth on FIELD_DEFINITION
 
 type User {

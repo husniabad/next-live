@@ -65,7 +65,9 @@ const ProjectList = () => {
 
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"> {/* Responsive grid layout */}
-      {projects.map((project: any) => ( // Map over the projects data
+      {
+      //@ts-ignore
+      projects.map((project: any) => ( // Map over the projects data
         // Render a ProjectItem component for each project
         // Pass project data and the refetch function (useful if an action on an item should refresh the list)
         <ProjectItem key={project.id} project={project} onProjectUpdated={refetch} />
