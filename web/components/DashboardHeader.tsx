@@ -98,14 +98,14 @@ const DashboardHeader = () => {
                 <DropdownMenuItem
                   onClick={handleVisitGitHub}
                   disabled={!gitHubUrl}
-                  className={!gitHubUrl ? 'opacity-50 cursor-not-allowed' : ''}>
+                  className={!gitHubUrl ? 'opacity-50 cursor-not-allowed' : '!cursor-pointer'}>
                                     Visit GitHub Account                {' '}
                 </DropdownMenuItem>
                                 {/* Add other potential options here */}       
                         {/* <DropdownMenuItem>Settings</DropdownMenuItem> */}
                                 <DropdownMenuSeparator />               {' '}
                 {/* Logout option */}               {' '}
-                <DropdownMenuItem onClick={handleLogout}>
+                <DropdownMenuItem className='cursor-pointer' onClick={handleLogout}>
                                     Logout                {' '}
                 </DropdownMenuItem>
                              {' '}

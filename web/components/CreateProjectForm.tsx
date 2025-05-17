@@ -64,7 +64,7 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onSuccess }) => {
   const { data: reposData, loading: reposLoading, error: reposError } = useQuery(GET_REPOSITORIES);
   
   // Create project mutation
-  const [createProject, { loading: createLoading, error: createError }] = useMutation(CREATE_PROJECT_MUTATION);
+  const [createProject, { loading: createLoading }] = useMutation(CREATE_PROJECT_MUTATION);
 
   // Set project name from selected repo
   useEffect(() => {
@@ -103,6 +103,7 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onSuccess }) => {
       setSearchTerm('');
       setIsRepoDialogOpen(false);
       router.push(`projects/${data?.createProject?.id}`)
+      //@ts-ignore
     } catch (err: any) {
       console.error("Error creating project:", err);
       toast.error(err.message || "An error occurred while creating the project.");

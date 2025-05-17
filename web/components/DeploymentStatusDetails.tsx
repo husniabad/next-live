@@ -67,7 +67,7 @@ const DeploymentStatusDetails: React.FC<DeploymentStatusDetailsProps> = ({ deplo
   });
 
   // Fetch deployment logs
-  const { data: logsData, loading: logsLoading, error: logsError, startPolling: startLogsPolling, stopPolling: stopLogsPolling, refetch: refetchLogs } = useQuery(GET_DEPLOYMENT_LOGS, {
+  const { data: logsData, loading: logsLoading, error: logsError,  stopPolling: stopLogsPolling } = useQuery(GET_DEPLOYMENT_LOGS, {
       variables: { id: deploymentId },
       // Skip log query until logFilePath is available from statusData
       skip: !statusData?.deploymentStatus?.logFilePath,
@@ -125,7 +125,7 @@ const DeploymentStatusDetails: React.FC<DeploymentStatusDetailsProps> = ({ deplo
       return () => {
           logArea.removeEventListener('scroll', handleScroll);
       };
-  }, [logAreaRef.current]); // Re-run effect if the ref changes
+  }, []); // Re-run effect if the ref changes
 
 
   // Effect to auto-scroll logs to the bottom when new logs arrive, but only if scrolled to bottom

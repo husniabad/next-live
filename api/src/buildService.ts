@@ -96,9 +96,9 @@ async function buildProjectImage(
                logStream.write(`--- Docker Build Failed: ${new Date().toISOString()} (Config Error) ---\n`);
                logStream.end(); // Close stream on early config error
            }
-          throw new Error(
-            `Configuration error: Default Next.js Dockerfile is missing on the build server at ${DEFAULT_DOCKERFILE_PATH}.`
-          );
+              throw new Error(
+                `Configuration error: Default Next.js Dockerfile is missing on the build server at ${DEFAULT_DOCKERFILE_PATH}.`
+              );
         }
 
         console.log(`Default Next.js Dockerfile found at: ${DEFAULT_DOCKERFILE_PATH}`);

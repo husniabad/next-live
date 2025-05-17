@@ -7,8 +7,13 @@ import os from 'os';
 import { cleanUpCloneDirectory, cloneRepository } from './gitService'; // Import gitService functions
 import { buildProjectImage, extractBuildArtifacts } from './buildService'; // Import buildService functions
 import { startApplication } from './servingService'; // Import servingService function
-import { configureNginxForDeployment } from './proxyService'; 
+import { configureNginxForDeployment } from './proxyService';
 import { createWriteStream, WriteStream } from 'fs';
+import fsSync from 'fs'; // Import sync version for existsSync checks if needed
+import { exec } from 'child_process'; // Import exec for running shell commands
+import { promisify } from 'util'; // Import promisify
+
+const execPromise = promisify(exec); // Promisify exec for use with await
 
 // Create a new Prisma client instance for the background process.
 // This is generally safer than sharing the main resolver's instance
@@ -51,21 +56,38 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
     try {
         // Update status to deploying
         console.log(`[Deployment ${deploymentId}] Updating status to 'deploying'.`);
-        await prisma.deployment.update({ where: { id: deploymentId }, data: { 
+        await prisma.deployment.update({ where: { id: deploymentId }, data: {
             status: 'deploying' ,
             logFilePath: logFilePath,
         } });
 
-        // Ensure build output directory exists on the host filesystem
-         try {
-             // This directory needs to be writable by the user running the Node.js process
-             await fs.mkdir(deploymentWorkingDir, { recursive: true });
-             console.log(`[Deployment ${deploymentId}] Created deployment working directory: ${deploymentWorkingDir}`);
-         } catch (dirError: any) {
-             console.error(`[Deployment ${deploymentId}] Failed to create deployment working directory: ${dirError.message}`);
-             // Re-throw to be caught by the main catch block
-             throw new Error(`Failed to prepare deployment workspace: ${dirError.message}`);
-         }
+        // Ensure deployment working directory exists on the host filesystem
+        try {
+            // This directory needs to be writable by the user running the Node.js process initially
+            await fs.mkdir(deploymentWorkingDir, { recursive: true });
+            console.log(`[Deployment ${deploymentId}] Created deployment working directory: ${deploymentWorkingDir}`);
+
+            // Create the build-output directory which will be mounted into the container
+            await fs.mkdir(buildOutputPath, { recursive: true });
+            console.log(`[Deployment ${deploymentId}] Created build output directory: ${buildOutputPath}`);
+
+            // --- IMPORTANT: Change ownership of the build-output directory ---
+            // Change ownership to the UID of the 'nextjs' user in the Dockerfile (typically 1001)
+            // This requires NOPASSWD sudo permission for 'chown' for the user running this process.
+            console.log(`[Deployment ${deploymentId}] Changing ownership of ${buildOutputPath} to UID 1001.`);
+            // Using exec for simplicity, pipe output to log file if needed (more complex)
+            const { stdout, stderr } = await execPromise(`sudo chown -R 1001:1001 ${buildOutputPath}`);
+            if (stdout) console.log(`[Deployment ${deploymentId}] chown stdout: ${stdout}`);
+            if (stderr) console.error(`[Deployment ${deploymentId}] chown stderr: ${stderr}`);
+            console.log(`[Deployment ${deploymentId}] Ownership changed successfully.`);
+            // --- End Change ownership ---
+
+
+        } catch (dirError: any) {
+            console.error(`[Deployment ${deploymentId}] Failed to prepare deployment workspace or change ownership: ${dirError.message}`);
+            // Re-throw to be caught by the main catch block
+            throw new Error(`Failed to prepare deployment workspace or change ownership: ${dirError.message}`);
+        }
 
 
         // 1. Clone Repository (into WSL2 home)
@@ -85,14 +107,15 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
         // 3. Artifact Extraction (from image to buildOutputPath)
         console.log(`[Deployment ${deploymentId}] Starting artifact extraction from image ${imageName} to ${buildOutputPath}.`);
         // extractBuildArtifacts copies from the image to the host buildOutputPath
+        // The chown step above ensures permissions are correct for the user inside the container
         await extractBuildArtifacts(imageName, buildOutputPath, logFilePath);
         console.log(`[Deployment ${deploymentId}] Artifacts extracted successfully to ${buildOutputPath}.`);
 
         // Cleanup temporary clone directory in WSL2 home after build/extraction
-         console.log(`[Deployment ${deploymentId}] Cleaning up temporary clone directory: ${wsl2CloneBaseDir}`);
-         // cleanUpCloneDirectory should handle removing the entire directory created by cloneRepository
-         await cleanUpCloneDirectory(wsl2CloneBaseDir, logFilePath);
-         console.log(`[Deployment ${deploymentId}] Temporary clone directory cleaned up.`);
+        console.log(`[Deployment ${deploymentId}] Cleaning up temporary clone directory: ${wsl2CloneBaseDir}`);
+        // cleanUpCloneDirectory should handle removing the entire directory created by cloneRepository
+        await cleanUpCloneDirectory(wsl2CloneBaseDir, logFilePath);
+        console.log(`[Deployment ${deploymentId}] Temporary clone directory cleaned up.`);
 
 
         // 4. Start Application (PM2)
@@ -148,19 +171,19 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
         }
 
 
-        // --- Cleanup on Failure ---
+        // --- Cleanup on Failure (TEMPORARILY COMMENTED OUT FOR DEBUGGING) ---
         console.log(`[Deployment ${deploymentId}] Initiating cleanup on failure.`);
         // Clean up build output directory on failure
-        if (deploymentWorkingDir) { // Ensure path was defined
-             fs.rm(deploymentWorkingDir, { recursive: true, force: true }).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of build output directory failed on error:`, cleanErr));
-        }
+        // if (deploymentWorkingDir) { // Ensure path was defined
+        //     fs.rm(deploymentWorkingDir, { recursive: true, force: true }).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of build output directory failed on error:`, cleanErr));
+        // }
 
-         // Clean up temporary clone directory in WSL2 home on failure
-         // Check if clonedRepoPath was successfully assigned before attempting cleanup
-         if (wsl2CloneBaseDir && clonedRepoPath) { // Ensure paths were defined and cloning started
-             console.log(`[Deployment ${deploymentId}] Cleaning up temporary clone directory in WSL2 home on failure: ${wsl2CloneBaseDir}`);
-              cleanUpCloneDirectory(wsl2CloneBaseDir, logFilePath).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of WSL2 clone directory failed on error:`, cleanErr));
-         }
+        // Clean up temporary clone directory in WSL2 home on failure
+        // Check if clonedRepoPath was successfully assigned before attempting cleanup
+        // if (wsl2CloneBaseDir && clonedRepoPath) { // Ensure paths were defined and cloning started
+        //     console.log(`[Deployment ${deploymentId}] Cleaning up temporary clone directory in WSL2 home on failure: ${wsl2CloneBaseDir}`);
+        //     cleanUpCloneDirectory(wsl2CloneBaseDir, logFilePath).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of WSL2 clone directory failed on error:`, cleanErr));
+        // }
         // TODO: Add cleanup for partially created Docker images or PM2 processes on failure if necessary
         // This can be complex depending on which step failed.
 

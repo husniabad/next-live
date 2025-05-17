@@ -1,7 +1,6 @@
 
 'use client'; 
 
-import Link from 'next/link';
 import { Button } from '@/components/ui/button'; 
 import { useRouter } from 'next/navigation'; 
 import { gql, useMutation } from '@apollo/client';
@@ -18,9 +17,9 @@ const LOGIN_GIT = gql`
 `;
 
 const HomePage = () => {
-  const { isAuthenticated, isLoading } = useAuth(); 
+  const { isAuthenticated } = useAuth(); 
    const router = useRouter(); // Hook to access Next.js router for navigation
-    const [loginGitMutation, { loading: mutationLoading }] = useMutation(LOGIN_GIT); // Apollo mutation hook
+    const [loginGitMutation, ] = useMutation(LOGIN_GIT); // Apollo mutation hook
     const [error, setError] = useState<string | null>(null); // State to store login errors
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -69,7 +68,7 @@ const HomePage = () => {
              setError('Login failed: No token received.');
              console.error('Login mutation did not return a token.');
           }
-    
+          //@ts-ignore
         } catch (err: any) {
           // Handle errors during the mutation or token storage
           setError(`Login failed: ${err.message || 'An unknown error occurred.'}`);
@@ -120,7 +119,7 @@ const HomePage = () => {
          {/* Use the Login component (or LoginButton if renamed) */}
          <div className='flex flex-col gap-4 items-center'> {/* Centered items */}
       {/* Button that triggers the GitHub OAuth redirect */}
-      <Button onClick={handleGitHubLogin}>Login with GitHub</Button>
+      <Button type='button' onClick={handleGitHubLogin}>Login with GitHub</Button>
       {/* Display error message if any */}
       {error && <p className="text-red-500 text-sm">{error}</p>} {/* Styled error message */}
     </div>

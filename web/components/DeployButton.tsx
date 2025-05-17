@@ -62,7 +62,7 @@ const DeployButton: React.FC<DeployButtonProps> = ({ projectId }) => {
            // --- End toast.warning() ---
       }
 
-
+      // @ts-ignore
     } catch (error: any) {
       console.error("Error triggering deployment:", error);
       // --- Use toast.error() for error messages ---
