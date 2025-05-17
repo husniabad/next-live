@@ -128,7 +128,7 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
 
         // 5. Configure Reverse Proxy (Nginx)
         // Generate deploymentUrl using userId (passed from resolver) and deploymentId
-        const deploymentUrl = `https://deploy-${deploymentId}.${userId}.${yourPlatformUrl}`; // Use a consistent subdomain pattern
+        const deploymentUrl = `https://deploy-${deploymentId}.${yourPlatformUrl}`; // Use a consistent subdomain pattern
         console.log(`[Deployment ${deploymentId}] Configuring Nginx. Public URL: ${deploymentUrl}, Internal Port: ${internalPort}.`);
         // configureNginxForDeployment should write the config, create symlink, and reload Nginx (requires sudoers setup)
         await configureNginxForDeployment(deploymentUrl, internalPort, deploymentId, buildOutputPath, logFilePath);
