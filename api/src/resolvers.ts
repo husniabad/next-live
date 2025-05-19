@@ -1,25 +1,15 @@
-// src/resolvers.ts
-
 import { PrismaClient } from '@prisma/client';
-// Import only necessary services used by resolvers (like Prisma, axios, jwt, URL)
-// The background processing services (gitService, buildService, etc.) are imported by processDeployment.ts
-import { enqueueDeployment } from './deploymentQueue'; // Import the enqueue function
-import { processDeployment } from './processDeployment'; // Import the background processing function (needed for type hinting and potentially direct call if queue fails)
+import { enqueueDeployment } from './deploymentQueue'; 
+import { processDeployment } from './processDeployment';
 import jwt from 'jsonwebtoken';
 import { URL } from 'url';
 import axios from 'axios';
 import fs from 'fs/promises'
-// Removed p-limit import
-// fs and os are not directly needed in resolvers.ts anymore unless used by other resolvers
-// path is used by createProject, so keep it
-import path from 'path';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
-
-// MAX_CONCURRENT_DEPLOYMENTS and queue setup are now in deploymentQueue.ts
 
 const resolvers = {
   Query: {
@@ -399,6 +389,7 @@ const resolvers = {
               deploymentId: deployment.id,
               projectId: project.id,
               userId: userId, // Pass userId for URL generation in async process
+              // projectName: project.name,
               gitRepoUrl: project.gitRepoUrl,
               // Pass any other necessary data here
             });

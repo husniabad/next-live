@@ -1,5 +1,3 @@
-// src/gitService.ts
-
 import simpleGit from 'simple-git';
 import path from 'path';
 import fs from 'fs/promises';
@@ -7,7 +5,7 @@ import os from 'os';
 import { createWriteStream, WriteStream } from 'fs';
 
 async function cloneRepository(repoUrl: string, deploymentId: string , logFilePath:string): Promise<string> {
-  const homeDir = os.homedir(); // temporary directory for cloning
+  const homeDir = os.homedir();
   const cloneDir = path.join(homeDir, '.next-live-clones', `deployment-${deploymentId}-repo`);
   const destinationPath = path.join(cloneDir, 'repository');
   let logStream: WriteStream | null = null;
@@ -80,14 +78,14 @@ async function cleanUpCloneDirectory(cloneDir: string, logFilePath:string): Prom
       if (logStream) {
         logStream.write(`Clone directory cleaned up successfully: ${cloneDir}\n`); // LOGS
         logStream.write(`--- Git Cleanup Finished: ${new Date().toISOString()} ---\n`); // LOGS
-        logStream.end(); // Close stream on success
+        logStream.end(); 
     }
   } catch (error:any) {
       console.error(`Failed to clean up clone directory ${cloneDir}:`, error);
       if (logStream) {
         logStream.write(`Failed to clean up clone directory ${cloneDir}: ${error.message}\n`); // LOGS
         logStream.write(`--- Git Cleanup Failed: ${new Date().toISOString()} ---\n`); // LOGS
-        logStream.end(); // Close stream on error
+        logStream.end();
     }
       // Decide if cleanup failure is critical enough to fail the deployment process
       // For now, just log the error.
