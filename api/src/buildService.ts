@@ -1,11 +1,8 @@
-// src/buildService.ts
-
 import { spawn } from 'child_process';
 import path from 'path';
-import fs from 'fs/promises'; // Use promises version for async file operations
-import { createWriteStream, WriteStream } from 'fs'; // Import for file streaming
-import fsSync from 'fs'; // Use sync version for existsSync
-import { finished } from 'stream/promises'; // Import for waiting on stream finish
+import fs from 'fs/promises'; 
+import { createWriteStream, WriteStream } from 'fs'; 
+import fsSync from 'fs'; 
 
 const DEFAULT_DOCKERFILE_PATH = path.resolve(
   __dirname,
@@ -109,10 +106,10 @@ async function buildProjectImage(
         console.log(`Attempting to detect Next.js project...`);
         if (logStream) logStream.write(`Attempting to detect Next.js project...\n`);
         let isNextProject = false;
-        const packageJsonPath = path.join(repoPath, 'package.json'); // Use repoPath here
-        const nextConfigJsPath = path.join(repoPath, 'next.config.js'); // Use repoPath here
-        const nextConfigMjsPath = path.join(repoPath, 'next.config.mjs'); // Use repoPath here
-        const nextConfigTsPath = path.join(repoPath, 'next.config.ts'); // Use repoPath here
+        const packageJsonPath = path.join(repoPath, 'package.json'); 
+        const nextConfigJsPath = path.join(repoPath, 'next.config.js');
+        const nextConfigMjsPath = path.join(repoPath, 'next.config.mjs'); 
+        const nextConfigTsPath = path.join(repoPath, 'next.config.ts');
 
         let nextConfigPath = null; // Path to the found next.config file
 
@@ -157,7 +154,6 @@ async function buildProjectImage(
             // Continue without this check if package.json is invalid
           }
         }
-        // --- End Next.js Detection Logic ---
 
 
         if (isNextProject) {
@@ -205,7 +201,6 @@ async function buildProjectImage(
                 )}: ${error.message}`
               )
             }
-            // --- End Next.js Standalone Config Check ---
           } else {
             // Project detected as Next.js (via package.json) but no next.config.* file found.
             const errorMsg = `Next.js configuration check failed: Project detected, but no next.config.js/mjs/ts found in repository root.`;
@@ -405,12 +400,10 @@ async function extractBuildArtifacts(imageName: string, buildOutputPath: string,
       imageName, // The image (the runner stage is the default)
       'sh',
       '-c', // Use sh to run the copy command
-      // --- CORRECTED COPY COMMAND ---
       // Copy everything from the runner stage's WORKDIR (/app) to the mounted volume path (/extracted-output)
       // The trailing /. on the source copies the *contents* of /app rather than /app itself.
       // Use '|| true' to prevent cp permission errors on mounted drives from failing the command
       `cp -R /app/. /extracted-output/ || true`, // Added || true here
-      // --- End CORRECTED COPY COMMAND ---
     ];
 
     console.log(

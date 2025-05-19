@@ -1,23 +1,19 @@
-// src/processDeployment.ts
-
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import fs from 'fs/promises';
 import os from 'os';
-import { cleanUpCloneDirectory, cloneRepository } from './gitService'; // Import gitService functions
-import { buildProjectImage, extractBuildArtifacts } from './buildService'; // Import buildService functions
-import { startApplication } from './servingService'; // Import servingService function
+import { cleanUpCloneDirectory, cloneRepository } from './gitService'; 
+import { buildProjectImage, extractBuildArtifacts } from './buildService'; 
+import { startApplication } from './servingService'; 
 import { configureNginxForDeployment } from './proxyService';
 import { createWriteStream, WriteStream } from 'fs';
-import fsSync from 'fs'; // Import sync version for existsSync checks if needed
-import { exec } from 'child_process'; // Import exec for running shell commands
-import { promisify } from 'util'; // Import promisify
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
 const execPromise = promisify(exec); // Promisify exec for use with await
 
 // Create a new Prisma client instance for the background process.
 // This is generally safer than sharing the main resolver's instance
-// in long-running async operations, although sharing might work depending on setup.
 const prisma = new PrismaClient();
 
 const yourPlatformUrl = process.env.YOUR_PLATFORM_URL || 'yourplatform.com'; // Replace with your actual platform domain
@@ -176,16 +172,16 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
         // --- Cleanup on Failure (TEMPORARILY COMMENTED OUT FOR DEBUGGING) ---
         console.log(`[Deployment ${deploymentId}] Initiating cleanup on failure.`);
         // Clean up build output directory on failure
-        // if (deploymentWorkingDir) { // Ensure path was defined
-        //     fs.rm(deploymentWorkingDir, { recursive: true, force: true }).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of build output directory failed on error:`, cleanErr));
-        // }
+        if (deploymentWorkingDir) { // Ensure path was defined
+            fs.rm(deploymentWorkingDir, { recursive: true, force: true }).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of build output directory failed on error:`, cleanErr));
+        }
 
         // Clean up temporary clone directory in WSL2 home on failure
         // Check if clonedRepoPath was successfully assigned before attempting cleanup
-        // if (wsl2CloneBaseDir && clonedRepoPath) { // Ensure paths were defined and cloning started
-        //     console.log(`[Deployment ${deploymentId}] Cleaning up temporary clone directory in WSL2 home on failure: ${wsl2CloneBaseDir}`);
-        //     cleanUpCloneDirectory(wsl2CloneBaseDir, logFilePath).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of WSL2 clone directory failed on error:`, cleanErr));
-        // }
+        if (wsl2CloneBaseDir && clonedRepoPath) { // Ensure paths were defined and cloning started
+            console.log(`[Deployment ${deploymentId}] Cleaning up temporary clone directory in WSL2 home on failure: ${wsl2CloneBaseDir}`);
+            cleanUpCloneDirectory(wsl2CloneBaseDir, logFilePath).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of WSL2 clone directory failed on error:`, cleanErr));
+        }
         // TODO: Add cleanup for partially created Docker images or PM2 processes on failure if necessary
         // This can be complex depending on which step failed.
 
