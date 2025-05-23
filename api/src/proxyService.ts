@@ -244,7 +244,7 @@ async function configureNginxForDeployment(
         // 1. Generate configuration content
         console.log(`Generating Nginx config for ${deploymentUrl}.`);
         if (logStream) logStream.write(`Generating Nginx config for ${deploymentUrl}...\n`);
-        const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+        const IS_PRODUCTION = typeof process.env.YOUR_PLATFORM_URL !== 'undefined';
         const nginxConfigContent = generateNginxConfig( // Call the updated generateNginxConfig
             deploymentUrl,
             internalPort,
