@@ -16,7 +16,7 @@ const execPromise = promisify(exec); // Promisify exec for use with await
 // This is generally safer than sharing the main resolver's instance
 const prisma = new PrismaClient();
 
-const yourPlatformUrl = process.env.YOUR_PLATFORM_URL || 'yourplatform.com'; // Replace with your actual platform domain
+const yourPlatformUrl = process.env.YOUR_PLATFORM_URL || null; // Replace with your actual platform domain
 
 
 /**
@@ -91,7 +91,7 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
         // 1. Clone Repository (into WSL2 home)
         console.log(`[Deployment ${deploymentId}] Cloning ${gitRepoUrl} into WSL2 home.`);
         // cloneRepository should handle creating the necessary parent directories in WSL2 home
-        clonedRepoPath = await cloneRepository(gitRepoUrl, deploymentId, logFilePath);
+        clonedRepoPath = await cloneRepository(gitRepoUrl, deploymentId, userId, logFilePath);
         console.log(`[Deployment ${deploymentId}] Repository cloned successfully to ${clonedRepoPath}.`);
 
         // 2. Build Docker Image (using cloned repo as context)
@@ -124,7 +124,7 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
 
         // 5. Configure Reverse Proxy (Nginx)
         // Generate deploymentUrl using userId (passed from resolver) and deploymentId
-        const deploymentUrl = `https://deploy-${deploymentId}.${yourPlatformUrl}`; // Use a consistent subdomain pattern
+        const deploymentUrl = yourPlatformUrl ? `https://deploy-${deploymentId}.${yourPlatformUrl}` : `http://localhost:${internalPort}`; // Use a consistent subdomain pattern
         console.log(`[Deployment ${deploymentId}] Configuring Nginx. Public URL: ${deploymentUrl}, Internal Port: ${internalPort}.`);
         // configureNginxForDeployment should write the config, create symlink, and reload Nginx (requires sudoers setup)
         await configureNginxForDeployment(deploymentUrl, internalPort, deploymentId, buildOutputPath, logFilePath);

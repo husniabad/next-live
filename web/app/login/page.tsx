@@ -43,7 +43,7 @@ const HomePage = () => {
           return;
         }
 
-        const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo`;
+        const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo%20user:email`;
     
         window.location.href = authUrl;
       };
