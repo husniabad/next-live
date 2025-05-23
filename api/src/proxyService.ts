@@ -23,89 +23,70 @@ const NGINX_RELOAD_COMMAND = 'sudo nginx -s reload'; // Command to reload Nginx 
 function generateNginxConfig(
     deploymentUrl: string,
     internalPort: number,
-    buildOutputPath: string
+    buildOutputPath: string,
+    useHttps: boolean // <-- NEW PARAMETER
 ): string {
-    // Use the URL class to parse the deploymentUrl and get just the hostname
     const url = new URL(deploymentUrl);
-    const hostname = url.hostname; // This will be 'deploy-XX.userId.yourplatform.com'
+    const hostname = url.hostname;
 
-    // --- IMPORTANT: Replace these with the actual paths to your wildcard SSL cert and key ---
-    // Ensure these files exist on your VM at these locations and are readable by the 'nginx' user
-    const sslCertificatePath = '/etc/nginx/ssl/*.nextlivenow.app.crt';
-    const sslCertificateKeyPath = '/etc/nginx/ssl/*.nextlivenow.app.key';
-    // -----------------------------------------------------------------------------------
+    // Remove http:// or https:// from hostname for server_name directive
+    const cleanHostname = hostname.replace(/^(http|https):\/\//, '');
 
-    return `
+    // Conditional SSL configuration parts
+    const sslConfig = useHttps ? `
+    # --- SSL Configuration ---
+    ssl_certificate /etc/nginx/ssl/*.nextlivenow.app.crt; // Your actual cert path
+    ssl_certificate_key /etc/nginx/ssl/*.nextlivenow.app.key; // Your actual key path
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384';
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    # --- End SSL Configuration ---
+    ` : '';
+
+    const httpRedirect = useHttps ? `
 server {
     listen 80;
     listen [::]:80;
-    server_name ${hostname};
+    server_name ${cleanHostname};
 
     # Redirect HTTP to HTTPS
     return 301 https://$host$request_uri;
 }
+` : '';
 
+    return `
+${httpRedirect}
 server {
-    listen 443 ssl http2; # Listen on port 443 with SSL enabled
-    listen [::]:443 ssl http2; # Listen on IPv6 port 443 with SSL enabled
-    server_name ${hostname};
+    listen ${useHttps ? '443 ssl http2' : '80'};
+    listen [::]:${useHttps ? '443 ssl http2' : '80'};
+    server_name ${cleanHostname};
 
-    # --- SSL Configuration ---
-    ssl_certificate ${sslCertificatePath}; # Path to your wildcard certificate
-    ssl_certificate_key ${sslCertificateKeyPath}; # Path to your wildcard private key
-    # include snippets/ssl-params.conf; # Optional: include common SSL settings if you have this file
-    ssl_protocols TLSv1.2 TLSv1.3; # Recommended SSL protocols
-    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384'; # Recommended ciphers
-    ssl_prefer_server_ciphers on;
-    ssl_session_cache shared:SSL:10m; # Cache SSL sessions
-    ssl_session_timeout 10m;
-    # ssl_stapling on; # Enable OCSP Stapling (requires resolver and DNS setup)
-    # ssl_stapling_verify on;
-    # resolver 8.8.8.8 8.8.4.4 valid=300s; # Google Public DNS, adjust if needed
-    # resolver_timeout 5s;
-    # --- End SSL Configuration ---
+    ${sslConfig}
 
     location / {
-        proxy_pass http://127.0.0.1:${internalPort}; # Forward to the internal application port
+        proxy_pass http://127.0.0.1:${internalPort};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
-        # Add other standard headers for proxying
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme; # Pass the protocol (http/https)
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # --- Optional: Serve static assets directly via Nginx for performance ---
-    # This requires the buildOutputPath to be accessible by Nginx on the VPS filesystem.
-    # It also requires ensuring the 'nginx' user has read permissions for these directories.
-    # For Next.js standalone, static assets are usually in .next/static and public
-    # Make sure the buildOutputPath variable passed to this function is correct!
     location /_next/static/ {
-        alias ${buildOutputPath}/.next/static/; # Path to static assets in the extracted build
-        expires 1y; # Cache static files for a long time
-        access_log off; # Optional: reduce log noise for static files
-        # Add MIME types if necessary
-        # default_type application/javascript;
-    }
-     location /public/ {
-        alias ${buildOutputPath}/public/; # Path to public assets in the extracted build
+        alias ${buildOutputPath}/.next/static/;
         expires 1y;
         access_log off;
-     }
-    # --- End Optional Static Assets ---
-
-    # Error pages (optional)
-    # error_page 500 502 503 504 /50x.html;
-    # location = /50x.html {
-    #     root /usr/share/nginx/html; # Or wherever your error pages are
-    # }
-
-    # Optional: Add logging format
-    # access_log /var/log/nginx/${hostname}.access.log combined; # Use hostname in log file name
-    # error_log /var/log/nginx/${hostname}.error.log; # Use hostname in log file name
+    }
+    location /public/ {
+        alias ${buildOutputPath}/public/;
+        expires 1y;
+        access_log off;
+    }
 }
 `;
 }
@@ -263,10 +244,12 @@ async function configureNginxForDeployment(
         // 1. Generate configuration content
         console.log(`Generating Nginx config for ${deploymentUrl}.`);
         if (logStream) logStream.write(`Generating Nginx config for ${deploymentUrl}...\n`);
+        const IS_PRODUCTION = process.env.NODE_ENV === 'production';
         const nginxConfigContent = generateNginxConfig( // Call the updated generateNginxConfig
             deploymentUrl,
             internalPort,
-            buildOutputPath
+            buildOutputPath,
+            IS_PRODUCTION
         );
 
 
