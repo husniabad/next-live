@@ -119,7 +119,6 @@ const resolvers = {
       if (!userId) {
         throw new Error('Not authenticated.');
       }
-      console.log(`Fetching status for deployment ${id} by user ${userId}`);
       const deployment = await prisma.deployment.findFirst({
         where: { id: id, project: { userId: userId } },
         select: {
@@ -149,7 +148,6 @@ const resolvers = {
         throw new Error('Not Authenticated')
       }
 
-      console.log(`fetching logs for deployment: ${id} by user: ${userId}`)
 
       const deployment = await prisma.deployment.findFirst({
         where: {
@@ -167,7 +165,6 @@ const resolvers = {
     
       try {
         const logsContent = await fs.readFile(logFilePath, 'utf8');
-        console.log(`Logs for deployment ${id} fetched successfully.`);
         return logsContent;
       }catch (error: any) {
         console.error(`Failed to read file ${logFilePath} for deployment ${id}:`, error.message);

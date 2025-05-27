@@ -80,7 +80,7 @@ const DashboardHeader = () => {
     return (
       <header className='bg-gray-800 dark:bg-gray-950 text-white p-4 shadow-md'>
         <div className='container mx-auto flex justify-between items-center'>
-          <div className='flex items-center gap-4'>
+          <div className='flex items-start gap-4'>
             {/* Placeholder Avatar */}
             <DropdownMenu>
                            {' '}
@@ -130,7 +130,7 @@ const DashboardHeader = () => {
     return (
       <header className='bg-red-800 text-white p-4 shadow-md'>
         <div className='container mx-auto flex justify-between items-center'>
-          <div className='flex items-center gap-4'>
+          <div className='flex items-start gap-4'>
             {/* Error Avatar */}
             <DropdownMenu>
                            {' '}
@@ -179,10 +179,9 @@ const DashboardHeader = () => {
     return (
       <header className='bg-gray-800 dark:bg-gray-950 text-white p-4 shadow-md'>
         <div className='container mx-auto flex justify-between items-center'>
-          <div className='flex items-center gap-4'>
-            {/* User Avatar */}
+          <div className='flex items-start gap-4'>
+
             <DropdownMenu>
-                           {' '}
               <DropdownMenuTrigger asChild>
                 <Avatar>
                   {/* Conditionally render AvatarImage if userAvatarUrl exists */}
