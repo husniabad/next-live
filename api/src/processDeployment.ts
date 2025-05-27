@@ -2,134 +2,204 @@ import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import fs from 'fs/promises';
 import os from 'os';
-import { cleanUpCloneDirectory, cloneRepository } from './gitService'; 
-import { buildProjectImage, extractBuildArtifacts } from './buildService'; 
-import { startApplication } from './servingService'; 
-import { configureNginxForDeployment } from './proxyService';
-import { createWriteStream, WriteStream } from 'fs';
+import { cleanUpCloneDirectory, cloneRepository } from './gitService'; // Assuming these are in gitService.ts
+import { buildProjectImage, extractBuildArtifacts, DockerfileSource } from './buildService'; // buildService.ts
+import { startApplication } from './servingService'; // servingService.ts
+import { configureNginxForDeployment } from './proxyService'; // proxyService.ts
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { sanitizeForSubdomain } from './utils';
 
-const execPromise = promisify(exec); // Promisify exec for use with await
+const execPromise = promisify(exec);
 
-// Create a new Prisma client instance for the background process.
-// This is generally safer than sharing the main resolver's instance
+// Create a new Prisma client instance.
 const prisma = new PrismaClient();
 
-const yourPlatformUrl = process.env.YOUR_PLATFORM_URL || null; // Replace with your actual platform domain
-
+// YOUR_PLATFORM_URL should be set in your environment variables for production
+// e.g., YOUR_PLATFORM_URL='nextlivenow.app'
+// If it's not set, the script assumes a development environment.
+const yourPlatformUrl = process.env.YOUR_PLATFORM_URL || null;
 
 /**
  * Asynchronously processes a deployment task.
  * This function contains the core logic for cloning, building, extracting,
- * starting the application, configuring the proxy, and updating the database status.
- * Errors are caught and logged, and the database status is updated accordingly.
- * This function is intended to be called by the deployment queue worker.
+ * starting the application, configuring the proxy (if in production),
+ * and updating the database status.
  * @param params Parameters for the deployment process.
  */
-async function processDeployment(params: { deploymentId: any; projectId: number; userId: number; gitRepoUrl: string; }) {
-    const { deploymentId, projectId, userId, gitRepoUrl } = params;
+async function processDeployment(params: {
+    deploymentId: any;
+    projectId: number;
+    userId: number;
+    gitRepoUrl: string;
+    // buildArgs?: { [key: string]: string }; // Optional: Pass build arguments if needed
+}) {
+    const { deploymentId, projectId, userId, gitRepoUrl /*, buildArgs = {} */ } = params;
 
     console.log(`[Deployment ${deploymentId}] Starting background processing...`);
+    console.log(`[Deployment ${deploymentId}] YOUR_PLATFORM_URL: '${yourPlatformUrl}' (Production mode if set)`);
 
-    // Define working paths (consistent with resolvers)
-    // Ensure these paths are appropriate for your WSL2/Linux environment
-    const baseDeploymentDir = path.join(__dirname, '..', 'deployments'); // Base path for build outputs
-    const deploymentWorkingDir = path.join(baseDeploymentDir, deploymentId.toString()); // Specific dir for build output
-    const buildOutputPath = path.join(deploymentWorkingDir, 'build-output'); // Path to store build artifacts
+    // Define working paths
+    const baseDeploymentDir = path.join(__dirname, '..', 'deployments'); // Base path for all deployments
+    const deploymentWorkingDir = path.join(baseDeploymentDir, deploymentId.toString()); // Specific dir for this deployment
+    const buildOutputPath = path.join(deploymentWorkingDir, 'build-output'); // Extracted artifacts go here
 
     const logFileName = `deployment-${deploymentId}.log`;
-    const logFilePath = path.join(deploymentWorkingDir, logFileName);
-    console.log(`[Deployment ${deploymentId}] Log file path: ${logFilePath}`);
+    const logFilePath = path.join(deploymentWorkingDir, logFileName); // Central log file for this deployment
+    console.log(`[Deployment ${deploymentId}] Log file will be at: ${logFilePath}`);
 
-    // Define the base directory for the temporary repository clone within WSL2 home
-    // This is the recommended place for Git operations in WSL2
+    // Define the base directory for the temporary repository clone
     const wsl2CloneBaseDir = path.join(os.homedir(), `.code-catalyst-clones`, `deployment-${deploymentId}-repo`);
-    let clonedRepoPath = ''; // Path where repo is cloned in WSL2 home
+    let clonedRepoPath = ''; // Path where repo is actually cloned
 
-    let dockerfileUsed = 'unknown'; // Variable to store which Dockerfile was used
-    let deploymentErrorMessage = null; // Variable to store error message on failure
-
+    let dockerfileUsedResult: DockerfileSource = 'unknown';
+    let deploymentErrorMessage: string | null = null;
+    let finalDeploymentUrl = ''; // URL to be stored, either production or local
+    let internalPort: number | null = null; // Port the application runs on internally
 
     try {
-        // Update status to deploying
+        // Update status to 'deploying' in the database
         console.log(`[Deployment ${deploymentId}] Updating status to 'deploying'.`);
-        await prisma.deployment.update({ where: { id: deploymentId }, data: {
-            status: 'deploying' ,
-            logFilePath: logFilePath,
-        } });
+        await prisma.deployment.update({
+            where: { id: deploymentId },
+            data: {
+                status: 'deploying',
+                logFilePath: logFilePath, // Store log file path
+            }
+        });
 
-        // Ensure deployment working directory exists on the host filesystem
+        // Prepare deployment workspace (create directories, set permissions)
         try {
-            // This directory needs to be writable by the user running the Node.js process initially
             await fs.mkdir(deploymentWorkingDir, { recursive: true });
             console.log(`[Deployment ${deploymentId}] Created deployment working directory: ${deploymentWorkingDir}`);
-
-            // Create the build-output directory which will be mounted into the container
             await fs.mkdir(buildOutputPath, { recursive: true });
             console.log(`[Deployment ${deploymentId}] Created build output directory: ${buildOutputPath}`);
 
-            // --- IMPORTANT: Change ownership of the build-output directory ---
-            // Change ownership to the UID of the 'nextjs' user in the Dockerfile (typically 1001)
-            // This requires NOPASSWD sudo permission for 'chown' for the user running this process.
-            console.log(`[Deployment ${deploymentId}] Changing ownership of ${buildOutputPath} to UID 1001.`);
-            // Using exec for simplicity, pipe output to log file if needed (more complex)
+            // Change ownership of the build-output directory.
+            // This is important if the user inside the Docker container or PM2 process needs specific permissions.
+            console.log(`[Deployment ${deploymentId}] Attempting to change ownership of ${buildOutputPath} to UID 1001.`);
             const { stdout, stderr } = await execPromise(`sudo chown -R 1001:1001 ${buildOutputPath}`);
             if (stdout) console.log(`[Deployment ${deploymentId}] chown stdout: ${stdout}`);
-            if (stderr) console.error(`[Deployment ${deploymentId}] chown stderr: ${stderr}`);
-            console.log(`[Deployment ${deploymentId}] Ownership changed successfully.`);
-            // --- End Change ownership ---
-
-
+            if (stderr) console.warn(`[Deployment ${deploymentId}] chown stderr: ${stderr}`); // Log warning, but don't fail
+            console.log(`[Deployment ${deploymentId}] Ownership change command executed.`);
         } catch (dirError: any) {
             console.error(`[Deployment ${deploymentId}] Failed to prepare deployment workspace or change ownership: ${dirError.message}`);
-            // Re-throw to be caught by the main catch block
             throw new Error(`Failed to prepare deployment workspace or change ownership: ${dirError.message}`);
         }
 
-
-        // 1. Clone Repository (into WSL2 home)
-        console.log(`[Deployment ${deploymentId}] Cloning ${gitRepoUrl} into WSL2 home.`);
-        // cloneRepository should handle creating the necessary parent directories in WSL2 home
+        // 1. Clone Repository
+        console.log(`[Deployment ${deploymentId}] Cloning ${gitRepoUrl} into ${wsl2CloneBaseDir}.`);
         clonedRepoPath = await cloneRepository(gitRepoUrl, deploymentId, userId, logFilePath);
         console.log(`[Deployment ${deploymentId}] Repository cloned successfully to ${clonedRepoPath}.`);
 
-        // 2. Build Docker Image (using cloned repo as context)
+        // 2. Build Docker Image
         const imageName = `project-${projectId}-${deploymentId}`;
         console.log(`[Deployment ${deploymentId}] Building image: ${imageName} from ${clonedRepoPath}.`);
-        // buildProjectImage should return an object like { dockerfileUsed: string }
-        const buildResult = await buildProjectImage(clonedRepoPath, imageName, logFilePath);
-        dockerfileUsed = buildResult.dockerfileUsed; // Capture which Dockerfile was used
-        console.log(`[Deployment ${deploymentId}] Image ${imageName} built successfully (${dockerfileUsed}).`);
+        // Pass any necessary build arguments if they are part of `params` or fetched elsewhere
+        const projectBuildArgs = { /* EXAMPLE_VAR: 'example_value' */ };
+        const buildResult = await buildProjectImage(clonedRepoPath, imageName, logFilePath, projectBuildArgs);
+        dockerfileUsedResult = buildResult.dockerfileUsed;
+        console.log(`[Deployment ${deploymentId}] Image ${imageName} built successfully (Dockerfile source: ${dockerfileUsedResult}).`);
 
-        // 3. Artifact Extraction (from image to buildOutputPath)
+        // 3. Artifact Extraction
         console.log(`[Deployment ${deploymentId}] Starting artifact extraction from image ${imageName} to ${buildOutputPath}.`);
-        // extractBuildArtifacts copies from the image to the host buildOutputPath
-        // The chown step above ensures permissions are correct for the user inside the container
         await extractBuildArtifacts(imageName, buildOutputPath, logFilePath);
         console.log(`[Deployment ${deploymentId}] Artifacts extracted successfully to ${buildOutputPath}.`);
 
-        // Cleanup temporary clone directory in WSL2 home after build/extraction
+        // Cleanup temporary clone directory
         console.log(`[Deployment ${deploymentId}] Cleaning up temporary clone directory: ${wsl2CloneBaseDir}`);
-        // cleanUpCloneDirectory should handle removing the entire directory created by cloneRepository
         await cleanUpCloneDirectory(wsl2CloneBaseDir, logFilePath);
         console.log(`[Deployment ${deploymentId}] Temporary clone directory cleaned up.`);
 
-
         // 4. Start Application (PM2)
-        console.log(`[Deployment ${deploymentId}] Starting application from ${buildOutputPath}.`);
-        // startApplication should start the process using PM2 and return the internal port
-        const { internalPort } = await startApplication(buildOutputPath, deploymentId);
-        console.log(`[Deployment ${deploymentId}] Application started on internal port ${internalPort}.`);
+        console.log(`[Deployment ${deploymentId}] Determining build type for application start.`);
+        const buildType = (dockerfileUsedResult === 'default_classic' || dockerfileUsedResult === 'user_classic_assumed') ? 'classic' : 'standalone';
+        console.log(`[Deployment ${deploymentId}] Starting application from ${buildOutputPath} (Build type: ${buildType}).`);
+        const appStartResult = await startApplication(buildOutputPath, deploymentId, { buildType: buildType });
+        internalPort = appStartResult.internalPort; // Capture the internal port
+        console.log(`[Deployment ${deploymentId}] Application started successfully on internal port ${internalPort}.`);
 
-        // 5. Configure Reverse Proxy (Nginx)
-        // Generate deploymentUrl using userId (passed from resolver) and deploymentId
-        const deploymentUrl = yourPlatformUrl ? `https://deploy-${deploymentId}.${yourPlatformUrl}` : `http://localhost:${internalPort}`; // Use a consistent subdomain pattern
-        console.log(`[Deployment ${deploymentId}] Configuring Nginx. Public URL: ${deploymentUrl}, Internal Port: ${internalPort}.`);
-        // configureNginxForDeployment should write the config, create symlink, and reload Nginx (requires sudoers setup)
-        await configureNginxForDeployment(deploymentUrl, internalPort, deploymentId, buildOutputPath, logFilePath);
-        console.log(`[Deployment ${deploymentId}] Nginx configured successfully.`);
+        const project = await prisma.project.findUnique({ where: {id: projectId}, include: { user: {select: {username: true }} }});
+        const user = project?.user || 'user';
+        const projectName = project?.name ?? `project-${projectId}`; // Fallback to project ID if name is not available
+        // const username = user?.git || 'unknown'; 
+        let finalDeploymentUrl = '';
+        let generatedHostname = ''; // This will be passed to Nginx configuration
+        const isProduction = !!yourPlatformUrl; // True if yourPlatformUrl is set and not an empty string
 
+        if (isProduction && yourPlatformUrl && internalPort) {
+            const sanitizedProjectName = sanitizeForSubdomain(projectName);
+            const sanitizedUsername = sanitizeForSubdomain("username");
+            const baseSubdomainPart = `${sanitizedProjectName}`.replace(/-$/, ''); // -${sanitizedUsername} Avoid trailing hyphen if one part is empty
+ 
+            let attempt = 0;
+            const MAX_URL_GENERATION_ATTEMPTS = 5; // Max attempts to find a unique URL
+
+            while (attempt < MAX_URL_GENERATION_ATTEMPTS) {
+                const randomString = Math.random().toString(36).substring(2, 7); // 5 random alphanumeric chars
+                const proposedSubdomain = `${baseSubdomainPart}-${randomString}`;
+
+                generatedHostname = `${proposedSubdomain}.${yourPlatformUrl}`;
+                const potentialOperationalUrl = `https://${generatedHostname}`;
+
+                // Check if this URL already exists for an active deployment
+                const existingDeployment = await prisma.deployment.findFirst({
+                    where: {
+                        deploymentUrl: potentialOperationalUrl,
+                        status: { in: ['success', 'deploying'] }, // Check active ones
+                        // NOT: { id: deploymentId } // Not needed here, as we are generating for the current new deploymentId
+                    }
+                });
+
+                if (!existingDeployment) {
+                    finalDeploymentUrl = potentialOperationalUrl; // Unique URL found
+                    break;
+                }
+                console.warn(`[Deployment ${deploymentId}] Generated URL <span class="math-inline">\{potentialOperationalUrl\} already exists\. Retrying \(</span>{attempt + 1}/${MAX_URL_GENERATION_ATTEMPTS})...`);
+                attempt++;
+            }
+
+            
+            if (!finalDeploymentUrl) {
+                // Fallback if unique URL couldn't be generated with the pattern
+                console.warn(`[Deployment ${deploymentId}] Could not generate unique URL with pattern after ${MAX_URL_GENERATION_ATTEMPTS} attempts. Falling back to deploy-ID pattern.`);
+                const fallbackSubdomain = `deploy-${deploymentId}`; // Default, highly likely to be unique
+                generatedHostname = `${fallbackSubdomain}.${yourPlatformUrl}`;
+                finalDeploymentUrl = `https://${generatedHostname}`;
+
+                // Final check for the fallback (should almost never collide)
+                const fallbackCollision = await prisma.deployment.findFirst({
+                    where: { deploymentUrl: finalDeploymentUrl, status: { in: ['success', 'deploying'] } }
+                });
+                if (fallbackCollision) {
+                    console.error(`[Deployment ${deploymentId}] FATAL: Fallback URL ${finalDeploymentUrl} also collided. This should not happen.`);
+                    throw new Error(`Failed to generate a unique deployment URL even with fallback pattern.`);
+                }
+            }
+            console.log(`[Deployment ${deploymentId}] Final generated production URL: ${finalDeploymentUrl}`);
+
+
+ 
+            // finalDeploymentUrl = `https://deploy-${deploymentId}.${yourPlatformUrl}`; // HTTPS for production
+            // console.log(`[Deployment ${deploymentId}] Production mode detected. Configuring Nginx.`);
+            // console.log(`[Deployment ${deploymentId}] Public URL will be: ${finalDeploymentUrl}`);
+            // await configureNginxForDeployment(finalDeploymentUrl, internalPort, deploymentId, buildOutputPath, logFilePath, true); // true for useHttps
+            // console.log(`[Deployment ${deploymentId}] Nginx configured successfully for production environment.`);
+        } else if (internalPort) {
+            // Development environment (YOUR_PLATFORM_URL not set): Use localhost URL and skip Nginx
+            finalDeploymentUrl = `http://localhost:${internalPort}`;
+            console.log(`[Deployment ${deploymentId}] Development mode detected (YOUR_PLATFORM_URL not set).`);
+            console.log(`[Deployment ${deploymentId}] Application accessible at: ${finalDeploymentUrl}. Skipping Nginx configuration.`);
+        } else {
+            // This case should ideally not be reached if startApplication is successful
+            console.error(`[Deployment ${deploymentId}] Internal port not obtained. Cannot determine deployment URL.`);
+            throw new Error("Internal port not available after application start.");
+        }
+
+        await prisma.deployment.update({ where: { id: deploymentId }, data: { deploymentUrl: finalDeploymentUrl} });
+        if (isProduction) {
+        await configureNginxForDeployment(finalDeploymentUrl, internalPort, deploymentId, buildOutputPath, logFilePath, true); 
+        }
 
         // Update Deployment Record on Success
         console.log(`[Deployment ${deploymentId}] Processing successful. Updating database record.`);
@@ -137,57 +207,49 @@ async function processDeployment(params: { deploymentId: any; projectId: number;
             where: { id: deploymentId },
             data: {
                 status: 'success',
-                buildOutputPath: buildOutputPath, // Store the path to the extracted artifacts
-                deploymentUrl: deploymentUrl, // Store the generated public URL
-                internalPort: internalPort, // Store the assigned internal port
-                dockerfileUsed: dockerfileUsed, // Store which Dockerfile was used
-                // version: commitHash, // Add commit hash if captured from git repo
+                buildOutputPath: buildOutputPath,
+                deploymentUrl: finalDeploymentUrl, // Store the final URL
+                internalPort: internalPort,
+                dockerfileUsed: dockerfileUsedResult,
             },
         });
-        console.log(`[Deployment ${deploymentId}] Database record updated to 'success'.`);
+        console.log(`[Deployment ${deploymentId}] Database record updated to 'success'. Deployment URL: ${finalDeploymentUrl}`);
 
     } catch (error: any) {
-        console.error(`[Deployment ${deploymentId}] Processing failed:`, error.message);
+        console.error(`[Deployment ${deploymentId}] Processing failed:`, error.message, error.stack);
         deploymentErrorMessage = error.message; // Capture the error message
 
         // Update Deployment Record on Failure
-        // Ensure this update doesn't fail itself!
         try {
             await prisma.deployment.update({
                 where: { id: deploymentId },
                 data: {
                     status: 'failed',
-                    dockerfileUsed: dockerfileUsed, // Store which Dockerfile was used even on failure
-                    errorMessage: deploymentErrorMessage, // Store the error message
+                    dockerfileUsed: dockerfileUsedResult, // Store which Dockerfile was attempted
+                    errorMessage: deploymentErrorMessage,
+                    deploymentUrl: finalDeploymentUrl || undefined, // Store URL if available
+                    internalPort: internalPort || undefined,
                 },
             });
             console.log(`[Deployment ${deploymentId}] Database record updated to 'failed' with error.`);
         } catch (dbError: any) {
             console.error(`[Deployment ${deploymentId}] FATAL: Failed to update database status to 'failed':`, dbError.message);
-            // At this point, the deployment failed and we couldn't even record the failure status properly.
-            // Manual intervention might be needed.
         }
 
-
-        // --- Cleanup on Failure (TEMPORARILY COMMENTED OUT FOR DEBUGGING) ---
-        console.log(`[Deployment ${deploymentId}] Initiating cleanup on failure.`);
-        // Clean up build output directory on failure
-        if (deploymentWorkingDir) { // Ensure path was defined
-            fs.rm(deploymentWorkingDir, { recursive: true, force: true }).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of build output directory failed on error:`, cleanErr));
+        // Cleanup on Failure
+        console.log(`[Deployment ${deploymentId}] Initiating cleanup due to failure.`);
+        if (deploymentWorkingDir) {
+            fs.rm(deploymentWorkingDir, { recursive: true, force: true })
+              .then(() => console.log(`[Deployment ${deploymentId}] Cleaned up deployment working directory: ${deploymentWorkingDir}`))
+              .catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of deployment working directory failed:`, cleanErr));
         }
-
-        // Clean up temporary clone directory in WSL2 home on failure
-        // Check if clonedRepoPath was successfully assigned before attempting cleanup
-        if (wsl2CloneBaseDir && clonedRepoPath) { // Ensure paths were defined and cloning started
-            console.log(`[Deployment ${deploymentId}] Cleaning up temporary clone directory in WSL2 home on failure: ${wsl2CloneBaseDir}`);
-            cleanUpCloneDirectory(wsl2CloneBaseDir, logFilePath).catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of WSL2 clone directory failed on error:`, cleanErr));
+        if (wsl2CloneBaseDir && clonedRepoPath) { // clonedRepoPath implies wsl2CloneBaseDir was used
+            console.log(`[Deployment ${deploymentId}] Cleaning up temporary clone directory: ${wsl2CloneBaseDir}`);
+            cleanUpCloneDirectory(wsl2CloneBaseDir, logFilePath)
+              .catch(cleanErr => console.error(`[Deployment ${deploymentId}] Cleanup of WSL2 clone directory failed:`, cleanErr));
         }
-        // TODO: Add cleanup for partially created Docker images or PM2 processes on failure if necessary
-        // This can be complex depending on which step failed.
-
-        // No need to re-throw here. The error is handled by updating the database status.
+        // TODO: Consider cleanup for Docker images (`docker rmi ...`) and PM2 processes (`pm2 delete ...`) on failure.
     }
-    // The function resolves implicitly on success or finishes after handling the catch.
 }
 
 export { processDeployment };

@@ -1,0 +1,46 @@
+# Stage 1: Build
+FROM node:18-alpine AS builder
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
+# Add logic here to select correct install command based on lockfile
+# For example:
+# RUN if [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
+#     elif [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; \
+#     else npm install --no-package-lock; fi
+RUN npm install --no-package-lock # Or your preferred package manager
+
+COPY . .
+
+# Add any build-time environment variables if necessary via --build-arg
+# ARG NEXT_PUBLIC_MY_VAR
+# ENV NEXT_PUBLIC_MY_VAR=$NEXT_PUBLIC_MY_VAR
+
+RUN npm run build # Or your specific build command (e.g., yarn build)
+
+# Stage 2: Runner
+FROM node:18-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV production
+
+# Create a non-root user (optional but recommended)
+# RUN addgroup -g 1001 -S nextjs && \
+#     adduser -S -u 1001 -G nextjs nextjs
+
+# Copy necessary files from the builder stage
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+# If your classic build needs node_modules in the final image (common if not fully bundled by Next.js itself)
+COPY --from=builder /app/node_modules ./node_modules
+
+# USER nextjs # Switch to non-root user if created
+
+EXPOSE 3000
+# Next.js will pick up PORT from environment variables
+# ENV PORT 3000 (This can also be set by PM2)
+
+# The command to start the app. 'next start' is typical.
+# Ensure 'start' script in package.json is 'next start' or use 'CMD ["next", "start"]'
+CMD ["npm", "run", "start"]

@@ -35,7 +35,7 @@ const DashboardPage = () => {
   // If authenticated, render the dashboard content
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 ">
         {/* Dashboard Header with user info and create project button */}
         <DashboardHeader />
 
