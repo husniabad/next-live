@@ -198,7 +198,7 @@ async function processDeployment(params: {
 
         await prisma.deployment.update({ where: { id: deploymentId }, data: { deploymentUrl: finalDeploymentUrl} });
         if (isProduction) {
-        await configureNginxForDeployment(finalDeploymentUrl, internalPort, deploymentId, buildOutputPath, logFilePath, true); 
+        await configureNginxForDeployment(finalDeploymentUrl, internalPort, deploymentId, buildOutputPath, logFilePath); 
         }
 
         // Update Deployment Record on Success
