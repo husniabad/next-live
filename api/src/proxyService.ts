@@ -33,8 +33,8 @@ function generateNginxConfig(
     // Conditional SSL configuration parts - Corrected Nginx comment syntax from // to #
     const sslConfig = useHttps ? `
     # --- SSL Configuration ---
-    ssl_certificate /etc/nginx/ssl/*.nextlivenow.app.crt; # Your actual cert path
-    ssl_certificate_key /etc/nginx/ssl/*.nextlivenow.app.key; # Your actual key path
+    ssl_certificate /etc/letsencrypt/live/nextlive.fun/fullchain.pem; # Your actual cert path
+    ssl_certificate_key /etc/letsencrypt/live/nextlive.fun/privkey.pem; # Your actual key path
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384';
     ssl_prefer_server_ciphers on;
