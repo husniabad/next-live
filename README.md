@@ -1,16 +1,18 @@
 <p align="center" style="padding: 5rem;">
   <img src="https://img.shields.io/badge/Status-Actively%20Developed-blue.svg?style=for-the-badge" alt="Project Status">&nbsp;&nbsp;
-  <a href="https://nodejs.org/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Backend-Node.js-339933.svg?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js Official Website"></a>&nbsp;&nbsp;
+  <img src="https://img.shields.io/badge/Node.js-%3E%3D18-339933.svg?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js Version Requirement">&nbsp;&nbsp;
   <a href="https://www.typescriptlang.org/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/TypeScript-007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript Official Website"></a>&nbsp;&nbsp;
-  <a href="https://graphql.org/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/GraphQL-E10098.svg?style=for-the-badge&logo=graphql&logoColor=white" alt="GraphQL Official Website"></a>&nbsp;&nbsp; 
-  <a href="https://www.apollographql.com/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/GraphQL%20Server-Apollo%20Server-311C87.svg?style=for-the-badge&logo=apollographql&logoColor=white" alt="Apollo Server Official Website"></a>
+  <a href="https://graphql.org/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/GraphQL-E10098.svg?style=for-the-badge&logo=graphql&logoColor=white" alt="GraphQL Official Website"></a>&nbsp;&nbsp;
+  <a href="https://www.apollographql.com/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/GraphQL%20Server-Apollo%20Server-311C87.svg?style=for-the-badge&logo=apollographql&logoColor=white" alt="Apollo Server Official Website"></a>&nbsp;&nbsp;
   <a href="https://www.postgresql.org/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Database-PostgreSQL-316192.svg?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL Official Website"></a>&nbsp;&nbsp;
   <a href="https://www.prisma.io/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/ORM-Prisma-0C344B.svg?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma ORM Official Website"></a>&nbsp;&nbsp;
   <a href="https://www.docker.com/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Containerization-Docker-2496ED.svg?style=for-the-badge&logo=docker&logoColor=white" alt="Docker Official Website"></a>&nbsp;&nbsp;
   <a href="https://pm2.keymetrics.io/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Process%20Manager-PM2-2B037A.svg?style=for-the-badge&logo=pm2&logoColor=white" alt="PM2 Official Website"></a>&nbsp;&nbsp;
   <a href="https://nginx.org/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Reverse%20Proxy-Nginx-009639.svg?style=for-the-badge&logo=nginx&logoColor=white" alt="Nginx Official Website"></a>&nbsp;&nbsp;
   <a href="https://github.com/husniabad/next-live/stargazers" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/github/stars/husniabad/next-live?style=for-the-badge&logo=github&color=yellow" alt="GitHub Stars"></a>&nbsp;&nbsp;
-  <a href="https://github.com/husniabad/next-live/network/members" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/github/forks/husniabad/next-live?style=for-the-badge&logo=github&color=orange" alt="GitHub Forks"></a>
+  <a href="https://github.com/husniabad/next-live/network/members" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/github/forks/husniabad/next-live?style=for-the-badge&logo=github&color=orange" alt="GitHub Forks"></a>&nbsp;&nbsp;
+  <a href="https://github.com/husniabad/next-live/issues" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/github/issues/husniabad/next-live?style=for-the-badge&logo=github&color=red" alt="GitHub Open Issues"></a>&nbsp;&nbsp;
+  <a href="https://github.com/husniabad/next-live/pulls" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge" alt="PRs Welcome"></a>
 </p>
 # Next Live
 
