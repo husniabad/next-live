@@ -46,7 +46,7 @@ async function cloneRepository(repoUrl: string, deploymentId: string,userId:numb
         logStream = createWriteStream(logFilePath, { flags: 'a' });
         logStream.write(`--- Git Clone Started: ${new Date().toISOString()} ---\n`);
         logStream.write(`Original URL: ${repoUrl}\n`);
-        logStream.write(`Authenticated URL: ${authenticatedRepoUrl}\n`);
+        // logStream.write(`Authenticated URL: ${authenticatedRepoUrl}\n`);
         logStream.write(`Using token: ****${accessToken?.slice(-4)}\n`);
     } catch (streamErr: any) {
         console.error(`Failed to create log file: ${streamErr.message}`);

@@ -351,13 +351,13 @@ export async function extractBuildArtifacts(imageName: string, buildOutputPath: 
         let stderrBuffer = ''; // Capture full stderr for potential error reporting
 
         // Pipe live output and also buffer it
-        if (logStream) {
-            dockerProcess.stdout.pipe(logStream, { end: false });
-            dockerProcess.stderr.pipe(logStream, { end: false });
-        } else {
-            dockerProcess.stdout.pipe(process.stdout);
-            dockerProcess.stderr.pipe(process.stderr);
-        }
+        // if (logStream) {
+        //     dockerProcess.stdout.pipe(logStream, { end: false });
+        //     dockerProcess.stderr.pipe(logStream, { end: false });
+        // } else {
+        //     dockerProcess.stdout.pipe(process.stdout);
+        //     dockerProcess.stderr.pipe(process.stderr);
+        // }
         dockerProcess.stdout.on('data', (data) => { stdoutBuffer += data.toString(); });
         dockerProcess.stderr.on('data', (data) => { stderrBuffer += data.toString(); });
 
